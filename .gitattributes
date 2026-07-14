@@ -1,0 +1,5 @@
+# cmd.exe misparses batch files with LF-only endings (label scanning eats
+# characters), and GitHub's "Download ZIP" serves files as committed — so
+# force CRLF for Windows script types everywhere, including archives.
+*.bat text eol=crlf
+*.vbs text eol=crlf
