@@ -70,9 +70,16 @@ def build_text():
         gpu_txt,
     ]
     if config.CLAUDE_ENABLED:
-        claude_5h = pct(s.get("claude_5h_pct")) if s.get("claude_active") else "idle"
-        parts.append(f"CLAUDE 5h {claude_5h}")
-        parts.append(f"WEEK {pct(s.get('claude_week_pct'))}")
+        status = s.get("claude_status")
+        if status == "login_required":
+            parts.append("CLAUDE login required")
+        else:
+            # "~" marks estimate mode: relative to your own history, not a
+            # real plan limit.
+            mark = "~" if status == "estimate" else ""
+            claude_5h = pct(s.get("claude_5h_pct")) if s.get("claude_active") else "idle"
+            parts.append(f"CLAUDE 5h {mark}{claude_5h}")
+            parts.append(f"WEEK {mark}{pct(s.get('claude_week_pct'))}")
 
     return "   ".join(parts)
 

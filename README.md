@@ -38,11 +38,12 @@ point any other script, dashboard, or website at the same local endpoint.
   same endpoint Claude Code's `/usage` command uses (authenticated with the
   token Claude Code already stores locally), so the gauges show your real
   percent-of-plan-limit numbers.
-- **`statstrip/claude_local.py`** — fallback when that's unavailable: shells
-  out to [`ccusage`](https://github.com/ryoppippi/ccusage) over your local
-  Claude Code logs (`~/.claude/projects`) and estimates percentages against
-  your own historical maximum (can exceed 100% — it's an estimate, not a
-  plan limit).
+- **`statstrip/claude_local.py`** — opt-in estimate mode
+  (`STATSTRIP_CLAUDE=estimate`): shells out to
+  [`ccusage`](https://github.com/ryoppippi/ccusage) over your local Claude
+  Code logs (`~/.claude/projects`) and estimates percentages against your
+  own historical maximum (can exceed 100% — it's an estimate, not a plan
+  limit; shown with a `~` prefix).
 - **`statstrip/display.py`** — consumption only. Polls that endpoint
   and renders the bar. Has zero knowledge of psutil/pynvml/HTTP polling
   internals — it's just one consumer of the feed.
@@ -92,7 +93,7 @@ All optional, set as environment variables before launching:
 
 | Variable              | Default              | Meaning                                   |
 |------------------------|-----------------------|--------------------------------------------|
-| `STATSTRIP_CLAUDE`           | `on`                  | Set to `off` to hide the Claude gauges. Uses Claude Code's own usage API when a local Claude Code login exists; otherwise falls back to `ccusage` (`npm install -g ccusage`). Gauges disable themselves if neither source works. |
+| `STATSTRIP_CLAUDE`           | `on`                  | `on`: real plan-limit % via Claude Code's usage API; shows `CLAUDE login required` when there's no usable local login. `estimate`: ccusage heuristic over local logs (`npm install -g ccusage`), rendered with a `~` prefix. `off`: hide the gauges. |
 | `STATSTRIP_TASKBAR`          | `1`                   | `1`: embed the readout inside the taskbar, left of the tray icons. `0`: float a separate bar just above the taskbar. |
 | `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |

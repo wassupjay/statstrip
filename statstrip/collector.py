@@ -34,7 +34,7 @@ _state = {
     "cpu_pct": None, "ram_pct": None, "disk_pct": None,
     "gpus": [],  # [{index, util_pct, mem_used_mb, mem_total_mb}]
     "claude_5h_pct": None, "claude_active": False,
-    "claude_week_pct": None,
+    "claude_week_pct": None, "claude_status": None,
     "updated_at": None,
 }
 
@@ -60,13 +60,21 @@ def collect_local():
 
 
 def collect_claude():
+    """Returns (active, five_h, week, status).
+
+    status: "ok" (real plan-limit %), "estimate" (ccusage heuristic),
+    "login_required" (no usable Claude Code login), or None (disabled).
+    """
     if not config.CLAUDE_ENABLED:
-        return False, None, None
+        return False, None, None, None
     from . import claude_local, claude_oauth
+    if config.CLAUDE_MODE == "estimate":
+        active, five_h, week = claude_local.collect()
+        return active, five_h, week, "estimate"
     result = claude_oauth.collect()  # real plan-limit % via Claude Code's session
     if result is not None:
-        return result
-    return claude_local.collect()  # fallback: ccusage heuristic vs own history
+        return (*result, "ok")
+    return False, None, None, "login_required"
 
 
 _write_lock = threading.Lock()  # local_loop and claude_loop both write
@@ -121,11 +129,12 @@ def claude_loop():
         return
     while True:
         try:
-            active, five_h, week = collect_claude()
+            active, five_h, week, status = collect_claude()
             with _lock:
                 _state["claude_active"] = active
                 _state["claude_5h_pct"] = five_h
                 _state["claude_week_pct"] = week
+                _state["claude_status"] = status
             write_snapshot()
         except Exception as e:
             # Same rule as local_loop: a ccusage hiccup or schema change

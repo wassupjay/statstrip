@@ -1,10 +1,12 @@
 import os
 import tempfile
 
-# Claude gauges read local Claude Code logs via the ccusage CLI
-# (npm install -g ccusage). Set STATSTRIP_CLAUDE=off to hide them;
-# they also disable themselves silently when ccusage isn't installed.
-CLAUDE_ENABLED = os.environ.get("STATSTRIP_CLAUDE", "on").lower() != "off"
+# Claude gauges. "on" (default): real plan-limit percentages via Claude
+# Code's own usage API — shows "login required" when no usable local login
+# exists. "estimate": ccusage heuristic over local logs (relative to your own
+# history, rendered with a ~ prefix). "off": hide the gauges.
+CLAUDE_MODE = os.environ.get("STATSTRIP_CLAUDE", "on").lower()
+CLAUDE_ENABLED = CLAUDE_MODE != "off"
 
 # "1" (default): embed the display inside the Windows taskbar, left of the
 # tray icons. "0": float as a separate bar just above the taskbar instead.
