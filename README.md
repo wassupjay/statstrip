@@ -8,7 +8,7 @@ external services. Set `STATSTRIP_TASKBAR=0` to get a floating always-on-top
 bar above the taskbar instead.
 
 ```
-CPU 34%   RAM 61%   DISK 72%   GPU0 18% 2100/12288MB   GPU1 0% 400/12288MB   CLAUDE 5h 47%   WEEK 63%
+CPU 34%   RAM 61%   DISK 72%   GPU0 18%   GPU1 0%   CLAUDE 5h 47%   WEEK 63%
 ```
 
 ## Architecture

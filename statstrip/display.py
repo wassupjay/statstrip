@@ -58,8 +58,7 @@ def build_text():
         return f"{v:.0f}%" if isinstance(v, (int, float)) else "?"
 
     gpu_txt = "  ".join(
-        f"GPU{g.get('index', '?')} {g.get('util_pct', '?')}% "
-        f"{g.get('mem_used_mb', '?')}/{g.get('mem_total_mb', '?')}MB"
+        f"GPU{g.get('index', '?')} {g.get('util_pct', '?')}%"
         for g in s.get("gpus", []) if isinstance(g, dict)
     ) or "GPU n/a"
 
