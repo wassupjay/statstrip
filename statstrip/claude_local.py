@@ -27,28 +27,41 @@ def _run_json(args):
     try:
         r = subprocess.run([_CCUSAGE, *args], capture_output=True, text=True,
                            timeout=60, shell=False, creationflags=_NO_WINDOW)
-        return json.loads(r.stdout)
+        d = json.loads(r.stdout)
+        return d if isinstance(d, dict) else {}
     except Exception:
         return {}
 
 
+def _entries(payload, key):
+    # ccusage's --json shape has shifted across versions; only ever hand
+    # back a list of dicts, whatever it printed.
+    v = payload.get(key, [])
+    return [e for e in v if isinstance(e, dict)] if isinstance(v, list) else []
+
+
+def _tokens(entry):
+    v = entry.get("totalTokens")
+    return v if isinstance(v, (int, float)) else 0
+
+
 def collect():
-    blocks = _run_json(["blocks", "--json"]).get("blocks", [])
-    weekly = _run_json(["weekly", "--json"]).get("weekly", [])
+    blocks = _entries(_run_json(["blocks", "--json"]), "blocks")
+    weekly = _entries(_run_json(["weekly", "--json"]), "weekly")
 
     active = next((b for b in blocks if b.get("isActive")), None)
     five_h = None
     if active:
-        completed = [b.get("totalTokens", 0) for b in blocks
+        completed = [_tokens(b) for b in blocks
                      if not b.get("isGap") and not b.get("isActive")]
         limit = max(completed, default=0)
         if limit:
-            five_h = round(active.get("totalTokens", 0) / limit * 100, 1)
+            five_h = round(_tokens(active) / limit * 100, 1)
 
     week_pct = None
     if weekly:
-        current = weekly[-1].get("totalTokens", 0)
-        prior_max = max((w.get("totalTokens", 0) for w in weekly[:-1]), default=0)
+        current = _tokens(weekly[-1])
+        prior_max = max((_tokens(w) for w in weekly[:-1]), default=0)
         limit = max(prior_max, current)
         if limit:
             week_pct = round(current / limit * 100, 1)

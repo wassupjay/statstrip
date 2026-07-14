@@ -58,8 +58,9 @@ def build_text():
         return f"{v:.0f}%" if isinstance(v, (int, float)) else "?"
 
     gpu_txt = "  ".join(
-        f"GPU{g['index']} {g['util_pct']}% {g['mem_used_mb']}/{g['mem_total_mb']}MB"
-        for g in s.get("gpus", [])
+        f"GPU{g.get('index', '?')} {g.get('util_pct', '?')}% "
+        f"{g.get('mem_used_mb', '?')}/{g.get('mem_total_mb', '?')}MB"
+        for g in s.get("gpus", []) if isinstance(g, dict)
     ) or "GPU n/a"
 
     parts = [
@@ -192,22 +193,46 @@ def run_bar():
         root.geometry(f"{sw}x{bar_h}+0+{root.winfo_screenheight() - bar_h - 40}")
 
     def refresh():
-        label.config(text=build_text())
-        if host is not None:
-            if not host.alive():
-                # Taskbar is gone (explorer.exe restarting) and took our
-                # child window with it — tear down and let main() rebuild.
-                root.destroy()
-                return
-            root.update_idletasks()
-            host.place(label.winfo_reqwidth() + 16)
-        root.after(1000, refresh)
+        rearm = True
+        try:
+            label.config(text=build_text())
+            if host is not None:
+                if not host.alive():
+                    # Taskbar is gone (explorer.exe restarting) and took our
+                    # child window with it — tear down and let main() rebuild.
+                    rearm = False
+                    root.destroy()
+                    return
+                root.update_idletasks()
+                host.place(label.winfo_reqwidth() + 16)
+        except tk.TclError:
+            rearm = False  # window torn down under us; main() rebuilds
+        except Exception:
+            pass  # one bad snapshot must never stop the update chain
+        finally:
+            if rearm:
+                root.after(1000, refresh)
 
     refresh()
     root.mainloop()
 
 
+_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_ERROR_ALREADY_EXISTS = 183
+_mutex = None  # keep the handle alive for the process lifetime
+
+
+def _already_running():
+    # Second instances happen easily (install.bat re-run, double login
+    # launch) and two bars overlay each other inside the taskbar.
+    global _mutex
+    _mutex = _kernel32.CreateMutexW(None, False, "Local\\StatStripDisplay")
+    return ctypes.get_last_error() == _ERROR_ALREADY_EXISTS
+
+
 def main():
+    if _already_running():
+        return
     _set_dpi_awareness()
     threading.Thread(target=poll, daemon=True).start()
     while True:

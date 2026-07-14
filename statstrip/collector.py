@@ -66,26 +66,33 @@ def collect_claude():
     return claude_local.collect()
 
 
+_write_lock = threading.Lock()  # local_loop and claude_loop both write
 _last_written = None
+_last_write_time = 0.0
+WRITE_HEARTBEAT = 30  # rewrite at least this often so the file's updated_at
+                      # keeps advancing on idle machines and file consumers
+                      # can still tell a live collector from a dead one
 
 
 def write_snapshot():
-    global _last_written
+    global _last_written, _last_write_time
     with _lock:
         snapshot = dict(_state)
     payload = json.dumps(snapshot)
     # Skip write when nothing changed (ignore the timestamp-only churn)
     comparable = {k: v for k, v in snapshot.items() if k != "updated_at"}
-    if comparable == _last_written:
-        return
-    try:
-        tmp = config.STATS_FILE + ".tmp"
-        with open(tmp, "w") as f:
-            f.write(payload)
-        os.replace(tmp, config.STATS_FILE)  # atomic — readers never see partial JSON
-        _last_written = comparable
-    except Exception:
-        pass
+    with _write_lock:
+        if comparable == _last_written and time.time() - _last_write_time < WRITE_HEARTBEAT:
+            return
+        try:
+            tmp = config.STATS_FILE + ".tmp"
+            with open(tmp, "w") as f:
+                f.write(payload)
+            os.replace(tmp, config.STATS_FILE)  # atomic — readers never see partial JSON
+            _last_written = comparable
+            _last_write_time = time.time()
+        except Exception:
+            pass
 
 
 def local_loop():
@@ -110,12 +117,18 @@ def claude_loop():
     if not config.CLAUDE_ENABLED:
         return
     while True:
-        active, five_h, week = collect_claude()
-        with _lock:
-            _state["claude_active"] = active
-            _state["claude_5h_pct"] = five_h
-            _state["claude_week_pct"] = week
-        write_snapshot()
+        try:
+            active, five_h, week = collect_claude()
+            with _lock:
+                _state["claude_active"] = active
+                _state["claude_5h_pct"] = five_h
+                _state["claude_week_pct"] = week
+            write_snapshot()
+        except Exception as e:
+            # Same rule as local_loop: a ccusage hiccup or schema change
+            # must never kill the thread — dead threads keep showing the
+            # last percentages as if they were live.
+            print(f"claude_loop error: {e}")
         time.sleep(config.CLAUDE_REFRESH)
 
 
@@ -130,7 +143,8 @@ class StatsHandler(BaseHTTPRequestHandler):
             body = json.dumps(_state).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        if config.CORS_ORIGIN:
+            self.send_header("Access-Control-Allow-Origin", config.CORS_ORIGIN)
         self.send_header("Content-Length", len(body))
         self.end_headers()
         self.wfile.write(body)

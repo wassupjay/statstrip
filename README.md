@@ -42,7 +42,9 @@ point any other script, dashboard, or website at the same local endpoint.
   internals — it's just one consumer of the feed.
 
 Anything else — a browser tab, another Python script, an Electron app — can
-hit the same `/stats` endpoint or read the JSON file directly.
+hit the same `/stats` endpoint or read the JSON file directly. (Browser pages
+need `STATSTRIP_CORS` set; it's off by default so arbitrary websites can't
+read your machine stats.)
 
 ## Install
 
@@ -89,6 +91,7 @@ All optional, set as environment variables before launching:
 | `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
 | `STATSTRIP_PORT`             | `5757`                | Local port the collector serves `/stats` on. |
+| `STATSTRIP_CORS`             | *(unset)*             | `Access-Control-Allow-Origin` value for `/stats` (e.g. `*`). Unset = no CORS header, so browser pages can't read the feed. |
 | `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |
 | `STATSTRIP_LOCAL_REFRESH`    | `2`                   | Seconds between CPU/RAM/disk/GPU polls.    |
 | `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between ccusage polls.   |
