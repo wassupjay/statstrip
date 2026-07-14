@@ -1,15 +1,39 @@
 # StatStrip
 
-System stats readout for Windows, embedded directly inside the taskbar
-(TrafficMonitor-style — just left of the tray icons, transparent background,
-zero extra screen space). Shows CPU, RAM, disk, GPU(s), and your Claude Code
-usage (5-hour block + weekly) — everything read locally from this PC, no
-external services. Set `STATSTRIP_TASKBAR=0` to get a floating always-on-top
-bar above the taskbar instead.
+Live system stats right inside your Windows taskbar — CPU, RAM, disk, GPU,
+and your Claude usage (5-hour block + weekly limit). No extra window, no
+wasted screen space: the numbers sit in the empty part of the taskbar itself.
 
 ```
 CPU 34%   RAM 61%   DISK 72%   GPU0 18%   GPU1 0%   CLAUDE 5h 47%   WEEK 63%
 ```
+
+## Install (2 minutes, no technical knowledge needed)
+
+1. **Install Python** (skip if you already have it): get it from
+   [python.org/downloads](https://www.python.org/downloads/), run the
+   installer, and tick the **"Add python.exe to PATH"** checkbox on the
+   first screen.
+2. **Download StatStrip**: click the green **Code** button at the top of
+   this GitHub page → **Download ZIP**, then right-click the downloaded file
+   → **Extract All**.
+3. **Run it**: open the extracted folder and double-click **`install.bat`**.
+
+That's it. The stats appear in your taskbar right away and come back
+automatically every time you log in. To remove StatStrip, double-click
+`uninstall.bat` in the same folder.
+
+## Privacy — no API keys, nothing leaves your PC
+
+- **No API keys, no accounts, no signup.** The Claude gauges reuse the
+  Claude Code login already on your PC (they simply ask Anthropic's servers
+  for your own usage numbers — the exact same request Claude Code makes when
+  you run `/usage`). If you don't use Claude Code, the gauges just show
+  "login required"; set `STATSTRIP_CLAUDE=off` to hide them.
+- **Your stats stay on your machine.** CPU/RAM/disk/GPU numbers are read
+  locally and served only on `127.0.0.1` (reachable from your own PC alone).
+  Nothing is uploaded, logged, or shared with anyone — there is no server,
+  no telemetry, no third party.
 
 ## Architecture
 
@@ -45,21 +69,22 @@ point any other script, dashboard, or website at the same local endpoint.
   own historical maximum (can exceed 100% — it's an estimate, not a plan
   limit; shown with a `~` prefix).
 - **`statstrip/display.py`** — consumption only. Polls that endpoint
-  and renders the bar. Has zero knowledge of psutil/pynvml/HTTP polling
-  internals — it's just one consumer of the feed.
+  and renders the bar embedded inside the taskbar (TrafficMonitor-style,
+  transparent background, left of the tray icons). Has zero knowledge of
+  psutil/pynvml/HTTP polling internals — it's just one consumer of the feed.
 
 Anything else — a browser tab, another Python script, an Electron app — can
 hit the same `/stats` endpoint or read the JSON file directly. (Browser pages
 need `STATSTRIP_CORS` set; it's off by default so arbitrary websites can't
 read your machine stats.)
 
-## Install
+## Install details (for developers)
 
 Requires Python 3.9+ on Windows (NVIDIA GPU optional; the app degrades
 gracefully without one).
 
 ```
-git clone <this-repo>
+git clone https://github.com/wassupjay/statstrip.git
 cd statstrip
 install.bat
 ```
@@ -68,8 +93,6 @@ install.bat
 `statstrip-collector` / `statstrip-display` to PATH), drops a shortcut in the
 per-user Startup folder so it starts on every login (no admin required), then
 runs it immediately.
-
-To remove: run `uninstall.bat`.
 
 ### Manual run (no auto-start)
 
@@ -101,7 +124,7 @@ All optional, set as environment variables before launching:
 | `STATSTRIP_CORS`             | *(unset)*             | `Access-Control-Allow-Origin` value for `/stats` (e.g. `*`). Unset = no CORS header, so browser pages can't read the feed. |
 | `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |
 | `STATSTRIP_LOCAL_REFRESH`    | `2`                   | Seconds between CPU/RAM/disk/GPU polls.    |
-| `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between ccusage polls.   |
+| `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between Claude usage polls (once a minute by default). |
 
 ## License
 
