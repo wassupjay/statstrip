@@ -10,18 +10,21 @@ CPU 34%   RAM 61%   DISK 72%   GPU0 18%   GPU1 0%   CLAUDE 5h 47%   WEEK 63%
 
 ## Install (2 minutes, no technical knowledge needed)
 
-1. **Install Python** (skip if you already have it): get it from
-   [python.org/downloads](https://www.python.org/downloads/), run the
-   installer, and tick the **"Add python.exe to PATH"** checkbox on the
-   first screen.
-2. **Download StatStrip**: click the green **Code** button at the top of
+1. **Download StatStrip**: click the green **Code** button at the top of
    this GitHub page → **Download ZIP**, then right-click the downloaded file
    → **Extract All**.
-3. **Run it**: open the extracted folder and double-click **`install.bat`**.
+2. **Run it**: open the extracted folder and double-click **`install.bat`**.
 
-That's it. The stats appear in your taskbar right away and come back
-automatically every time you log in. To remove StatStrip, double-click
-`uninstall.bat` in the same folder.
+That's it — the installer checks for Python and downloads it automatically
+if it's missing (this can take a few minutes the first time). The stats
+appear in your taskbar right away and come back automatically every time
+you log in. To remove StatStrip, double-click `uninstall.bat` in the same
+folder.
+
+> If the automatic Python download fails (very old Windows without winget),
+> install Python once from
+> [python.org/downloads](https://www.python.org/downloads/) — tick **"Add
+> python.exe to PATH"** — and run `install.bat` again.
 
 ## Privacy — no API keys, nothing leaves your PC
 
