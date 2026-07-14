@@ -11,21 +11,30 @@ since Anthropic doesn't publish absolute plan limits.
 Requires Node.js: `npm install -g ccusage`.
 """
 import json
+import shutil
 import subprocess
 
+# npm installs ccusage as a .cmd shim, which CreateProcess can't launch by
+# bare name — resolve the full path (PATHEXT-aware) up front.
+_CCUSAGE = shutil.which("ccusage")
+# Don't flash a console window every poll when running under pythonw.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-def _run_json(cmd):
+
+def _run_json(args):
+    if not _CCUSAGE:
+        return {}
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60,
-                           shell=False)
+        r = subprocess.run([_CCUSAGE, *args], capture_output=True, text=True,
+                           timeout=60, shell=False, creationflags=_NO_WINDOW)
         return json.loads(r.stdout)
     except Exception:
         return {}
 
 
 def collect():
-    blocks = _run_json(["ccusage", "blocks", "--json"]).get("blocks", [])
-    weekly = _run_json(["ccusage", "weekly", "--json"]).get("weekly", [])
+    blocks = _run_json(["blocks", "--json"]).get("blocks", [])
+    weekly = _run_json(["weekly", "--json"]).get("weekly", [])
 
     active = next((b for b in blocks if b.get("isActive")), None)
     five_h = None
