@@ -1,8 +1,8 @@
 # StatStrip
 
 Always-on-top system stats bar for Windows. Sits docked just above the real
-taskbar, showing CPU, RAM, disk, and GPU(s) — with optional gauges for a
-Claude usage dashboard's 5-hour and weekly limits.
+taskbar, showing CPU, RAM, disk, GPU(s), and your Claude Code usage (5-hour
+block + weekly) — everything read locally from this PC, no external services.
 
 ```
 CPU 34%   RAM 61%   DISK 72%   GPU0 18% 2100/12288MB   GPU1 0% 400/12288MB   CLAUDE 5h 47%   WEEK 63%
@@ -17,8 +17,8 @@ point any other script, dashboard, or website at the same local endpoint.
 ┌─────────────────┐      writes/serves       ┌────────────────┐
 │   collector      │ ───────────────────────▶ │ stats.json      │
 │  (psutil/pynvml,  │                          │ 127.0.0.1:5757  │
-│   optional Claude │                          │      /stats     │
-│   API poll)        │◀────────── read only ───┤                │
+│   ccusage for     │                          │      /stats     │
+│   Claude usage)    │◀────────── read only ───┤                │
 └─────────────────┘                          └────────┬────────┘
                                                         │
                                               ┌─────────▼─────────┐
@@ -28,13 +28,12 @@ point any other script, dashboard, or website at the same local endpoint.
                                               └────────────────────┘
 ```
 
-- **`statstrip/collector.py`** — extraction only. Polls local
-  hardware stats plus Claude usage (via the bundled `ccusage`-based local
-  source, or a remote dashboard API), then writes the merged snapshot to a
-  JSON file and serves it over `http://127.0.0.1:5757/stats`.
-- **`statstrip/claude_local.py`** — self-contained Claude usage reader:
-  shells out to [`ccusage`](https://github.com/ryoppippi/ccusage) over your
-  local Claude Code logs. No external server required.
+- **`statstrip/collector.py`** — extraction only. Polls local hardware
+  stats and local Claude usage, then writes the merged snapshot to a JSON
+  file and serves it over `http://127.0.0.1:5757/stats`.
+- **`statstrip/claude_local.py`** — Claude usage reader: shells out to
+  [`ccusage`](https://github.com/ryoppippi/ccusage) over your local Claude
+  Code logs (`~/.claude/projects`). No external server involved.
 - **`statstrip/display.py`** — consumption only. Polls that endpoint
   and renders the bar. Has zero knowledge of psutil/pynvml/HTTP polling
   internals — it's just one consumer of the feed.
@@ -81,13 +80,12 @@ All optional, set as environment variables before launching:
 
 | Variable              | Default              | Meaning                                   |
 |------------------------|-----------------------|--------------------------------------------|
-| `STATSTRIP_CLAUDE_SOURCE`    | `local`               | Claude usage source: `local` runs the bundled [`ccusage`](https://github.com/ryoppippi/ccusage)-based collector against your Claude Code logs (needs `npm install -g ccusage`; gauges silently disabled if missing); `api` polls a remote dashboard; `off` disables the gauges. |
-| `STATSTRIP_CLAUDE_API_URL`   | *(unset)*             | For `api` mode: URL of an endpoint returning `{"active": bool, "tokens_pct": float, "weekly": {"pct": float}}`. Setting this implies `api` mode. |
+| `STATSTRIP_CLAUDE`           | `on`                  | Set to `off` to hide the Claude gauges. Needs `npm install -g ccusage` when on; gauges silently disable themselves if ccusage is missing. |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
 | `STATSTRIP_PORT`             | `5757`                | Local port the collector serves `/stats` on. |
 | `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |
 | `STATSTRIP_LOCAL_REFRESH`    | `2`                   | Seconds between CPU/RAM/disk/GPU polls.    |
-| `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between remote Claude API polls.   |
+| `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between ccusage polls.   |
 
 ## License
 

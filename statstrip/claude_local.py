@@ -2,7 +2,7 @@
 
 Runs the `ccusage` CLI (https://github.com/ryoppippi/ccusage) against your
 local Claude Code logs (~/.claude/projects) and reduces the output to the
-same shape the remote-API mode expects:
+shape the collector expects:
 
     (active: bool, five_hour_pct: float | None, weekly_pct: float | None)
 

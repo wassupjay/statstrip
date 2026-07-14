@@ -62,7 +62,7 @@ def build_text():
         f"DISK {pct(s.get('disk_pct'))}",
         gpu_txt,
     ]
-    if config.CLAUDE_SOURCE != "off":
+    if config.CLAUDE_ENABLED:
         claude_5h = pct(s.get("claude_5h_pct")) if s.get("claude_active") else "idle"
         parts.append(f"CLAUDE 5h {claude_5h}")
         parts.append(f"WEEK {pct(s.get('claude_week_pct'))}")

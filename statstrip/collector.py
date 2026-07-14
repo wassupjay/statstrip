@@ -1,9 +1,9 @@
-"""Data-extraction layer only. No UI.
+"""Data-extraction layer only. No UI. Everything is read from this PC.
 
-Polls CPU/RAM/DISK/GPU locally, and optionally a Claude usage dashboard's
-JSON API, then writes the merged snapshot to a stats file AND serves it over
-a tiny local HTTP endpoint so any other script/app/website can consume it
-independently of display.py.
+Polls CPU/RAM/DISK/GPU via psutil/pynvml and Claude usage via the local
+ccusage CLI, then writes the merged snapshot to a stats file AND serves it
+over a tiny local HTTP endpoint so any other script/app/website can consume
+it independently of display.py.
 
     python -m statstrip.collector
 
@@ -18,7 +18,6 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import psutil
-import requests
 
 from . import config
 
@@ -29,8 +28,6 @@ try:
                     for i in range(pynvml.nvmlDeviceGetCount())]
 except Exception:
     _GPU_HANDLES = []
-
-_session = requests.Session()
 
 _lock = threading.Lock()
 _state = {
@@ -63,20 +60,10 @@ def collect_local():
 
 
 def collect_claude():
-    if config.CLAUDE_SOURCE == "api" and config.CLAUDE_API_URL:
-        try:
-            r = _session.get(config.CLAUDE_API_URL, timeout=10)
-            d = r.json()
-            active = bool(d.get("active"))
-            five_h = d.get("tokens_pct") if active else None
-            week = (d.get("weekly") or {}).get("pct")
-            return active, five_h, week
-        except Exception:
-            return False, None, None
-    if config.CLAUDE_SOURCE == "local":
-        from . import claude_local
-        return claude_local.collect()
-    return False, None, None
+    if not config.CLAUDE_ENABLED:
+        return False, None, None
+    from . import claude_local
+    return claude_local.collect()
 
 
 _last_written = None
@@ -120,7 +107,7 @@ def local_loop():
 
 
 def claude_loop():
-    if config.CLAUDE_SOURCE == "off":
+    if not config.CLAUDE_ENABLED:
         return
     while True:
         active, five_h, week = collect_claude()
