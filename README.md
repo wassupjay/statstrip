@@ -119,7 +119,7 @@ All optional, set as environment variables before launching:
 
 | Variable              | Default              | Meaning                                   |
 |------------------------|-----------------------|--------------------------------------------|
-| `STATSTRIP_CLAUDE`           | `on`                  | `on`: real plan-limit % via Claude Code's usage API; shows `CLAUDE login required` when there's no usable local login. `estimate`: ccusage heuristic over local logs (`npm install -g ccusage`), rendered with a `~` prefix. `off`: hide the gauges. |
+| `STATSTRIP_CLAUDE`           | `on`                  | `on`: real plan-limit % via Claude Code's usage API; shows `CLAUDE login required` when there's no usable local login, or `CLAUDE usage unavailable` for a transient failure (rate limit, network). `estimate`: ccusage heuristic over local logs (`npm install -g ccusage`), rendered with a `~` prefix. `off`: hide the gauges. |
 | `STATSTRIP_TASKBAR`          | `1`                   | `1`: embed the readout inside the taskbar, left of the tray icons. `0`: float a separate bar just above the taskbar. |
 | `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |

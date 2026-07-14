@@ -72,6 +72,10 @@ def build_text():
         status = s.get("claude_status")
         if status == "login_required":
             parts.append("CLAUDE login required")
+        elif status == "unavailable":
+            # Transient (rate limited, network blip) — never claim login is
+            # needed for a problem that isn't about login.
+            parts.append("CLAUDE usage unavailable")
         else:
             # "~" marks estimate mode: relative to your own history, not a
             # real plan limit.

@@ -63,7 +63,8 @@ def collect_claude():
     """Returns (active, five_h, week, status).
 
     status: "ok" (real plan-limit %), "estimate" (ccusage heuristic),
-    "login_required" (no usable Claude Code login), or None (disabled).
+    "login_required" (no usable Claude Code login), "unavailable" (transient
+    API failure — rate limited, network, endpoint hiccup), or None (disabled).
     """
     if not config.CLAUDE_ENABLED:
         return False, None, None, None
@@ -72,9 +73,11 @@ def collect_claude():
         active, five_h, week = claude_local.collect()
         return active, five_h, week, "estimate"
     result = claude_oauth.collect()  # real plan-limit % via Claude Code's session
-    if result is not None:
-        return (*result, "ok")
-    return False, None, None, "login_required"
+    if result == "login_required":
+        return False, None, None, "login_required"
+    if result is None:
+        return False, None, None, "unavailable"
+    return (*result, "ok")
 
 
 _write_lock = threading.Lock()  # local_loop and claude_loop both write

@@ -19,15 +19,30 @@ REM python.org install layouts.
 for /d %%d in ("%LOCALAPPDATA%\Programs\Python\Python3*" "%LOCALAPPDATA%\Python\pythoncore-3*") do set "PYTHON=%%d\python.exe"
 if not "%PYTHON%"=="python" if exist "%PYTHON%" goto have_python
 
-echo Python is not installed. Downloading it now - this can take a few minutes...
+where winget >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+  echo.
+  echo Python is not installed, and this PC doesn't have winget ^(the Windows
+  echo package installer^) to fetch it automatically - that's normal on older
+  echo Windows 10 builds. Please install Python yourself from
+  echo   https://www.python.org/downloads/
+  echo ^(tick "Add python.exe to PATH" in the installer^), then run install.bat again.
+  pause
+  exit /b 1
+)
+
+echo Python is not installed. Downloading it now via winget - this can take a few minutes...
 winget install -e --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements
+set "WINGET_RESULT=%ERRORLEVEL%"
 for /d %%d in ("%LOCALAPPDATA%\Programs\Python\Python3*" "%LOCALAPPDATA%\Python\pythoncore-3*") do set "PYTHON=%%d\python.exe"
 if exist "%PYTHON%" goto have_python
 
 echo.
-echo Could not install Python automatically. Please install it yourself from
+echo Automatic Python install did not complete ^(winget exit code %WINGET_RESULT%^).
+echo This usually means no internet connection, or winget needs updating from
+echo the Microsoft Store ^("App Installer"^). Please install Python yourself from
 echo   https://www.python.org/downloads/
-echo (tick "Add python.exe to PATH" in the installer), then run install.bat again.
+echo ^(tick "Add python.exe to PATH" in the installer^), then run install.bat again.
 pause
 exit /b 1
 
