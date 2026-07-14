@@ -62,8 +62,11 @@ def collect_local():
 def collect_claude():
     if not config.CLAUDE_ENABLED:
         return False, None, None
-    from . import claude_local
-    return claude_local.collect()
+    from . import claude_local, claude_oauth
+    result = claude_oauth.collect()  # real plan-limit % via Claude Code's session
+    if result is not None:
+        return result
+    return claude_local.collect()  # fallback: ccusage heuristic vs own history
 
 
 _write_lock = threading.Lock()  # local_loop and claude_loop both write
