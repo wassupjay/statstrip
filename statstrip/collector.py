@@ -63,17 +63,20 @@ def collect_local():
 
 
 def collect_claude():
-    if not config.CLAUDE_API_URL:
-        return False, None, None
-    try:
-        r = _session.get(config.CLAUDE_API_URL, timeout=10)
-        d = r.json()
-        active = bool(d.get("active"))
-        five_h = d.get("tokens_pct") if active else None
-        week = (d.get("weekly") or {}).get("pct")
-        return active, five_h, week
-    except Exception:
-        return False, None, None
+    if config.CLAUDE_SOURCE == "api" and config.CLAUDE_API_URL:
+        try:
+            r = _session.get(config.CLAUDE_API_URL, timeout=10)
+            d = r.json()
+            active = bool(d.get("active"))
+            five_h = d.get("tokens_pct") if active else None
+            week = (d.get("weekly") or {}).get("pct")
+            return active, five_h, week
+        except Exception:
+            return False, None, None
+    if config.CLAUDE_SOURCE == "local":
+        from . import claude_local
+        return claude_local.collect()
+    return False, None, None
 
 
 _last_written = None
@@ -117,7 +120,7 @@ def local_loop():
 
 
 def claude_loop():
-    if not config.CLAUDE_API_URL:
+    if config.CLAUDE_SOURCE == "off":
         return
     while True:
         active, five_h, week = collect_claude()

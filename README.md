@@ -29,9 +29,12 @@ point any other script, dashboard, or website at the same local endpoint.
 ```
 
 - **`statstrip/collector.py`** — extraction only. Polls local
-  hardware stats and (if configured) a remote Claude usage API, then writes
-  the merged snapshot to a JSON file and serves it over
-  `http://127.0.0.1:5757/stats`.
+  hardware stats plus Claude usage (via the bundled `ccusage`-based local
+  source, or a remote dashboard API), then writes the merged snapshot to a
+  JSON file and serves it over `http://127.0.0.1:5757/stats`.
+- **`statstrip/claude_local.py`** — self-contained Claude usage reader:
+  shells out to [`ccusage`](https://github.com/ryoppippi/ccusage) over your
+  local Claude Code logs. No external server required.
 - **`statstrip/display.py`** — consumption only. Polls that endpoint
   and renders the bar. Has zero knowledge of psutil/pynvml/HTTP polling
   internals — it's just one consumer of the feed.
@@ -78,7 +81,8 @@ All optional, set as environment variables before launching:
 
 | Variable              | Default              | Meaning                                   |
 |------------------------|-----------------------|--------------------------------------------|
-| `STATSTRIP_CLAUDE_API_URL`   | *(unset)*             | URL of a Claude usage dashboard `/api` endpoint returning `{"active": bool, "tokens_pct": float, "weekly": {"pct": float}}`. Leave unset to disable the Claude gauges. |
+| `STATSTRIP_CLAUDE_SOURCE`    | `local`               | Claude usage source: `local` runs the bundled [`ccusage`](https://github.com/ryoppippi/ccusage)-based collector against your Claude Code logs (needs `npm install -g ccusage`; gauges silently disabled if missing); `api` polls a remote dashboard; `off` disables the gauges. |
+| `STATSTRIP_CLAUDE_API_URL`   | *(unset)*             | For `api` mode: URL of an endpoint returning `{"active": bool, "tokens_pct": float, "weekly": {"pct": float}}`. Setting this implies `api` mode. |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
 | `STATSTRIP_PORT`             | `5757`                | Local port the collector serves `/stats` on. |
 | `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |
