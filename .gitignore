@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+statstrip-stats.json
+stats.json
