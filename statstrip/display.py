@@ -137,10 +137,13 @@ class TaskbarHost:
     def place(self, width):
         tbr = _rect(self.taskbar)
         height = tbr.bottom - tbr.top
-        # Right-align against the tray icons (or the taskbar edge if no tray),
-        # in taskbar client coordinates.
-        edge = _rect(self.tray).left if self.tray else tbr.right
-        x = max(0, edge - tbr.left - width - self.MARGIN)
+        if config.TASKBAR_ALIGN == "left":
+            x = self.MARGIN
+        else:
+            # Right-align against the tray icons (or the taskbar edge if no
+            # tray), in taskbar client coordinates.
+            edge = _rect(self.tray).left if self.tray else tbr.right
+            x = max(0, edge - tbr.left - width - self.MARGIN)
         if (x, width, height) != self._last:
             user32.MoveWindow(self.hwnd, x, 0, width, height, True)
             self._last = (x, width, height)

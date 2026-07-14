@@ -86,6 +86,7 @@ All optional, set as environment variables before launching:
 |------------------------|-----------------------|--------------------------------------------|
 | `STATSTRIP_CLAUDE`           | `on`                  | Set to `off` to hide the Claude gauges. Needs `npm install -g ccusage` when on; gauges silently disable themselves if ccusage is missing. |
 | `STATSTRIP_TASKBAR`          | `1`                   | `1`: embed the readout inside the taskbar, left of the tray icons. `0`: float a separate bar just above the taskbar. |
+| `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
 | `STATSTRIP_PORT`             | `5757`                | Local port the collector serves `/stats` on. |
 | `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |

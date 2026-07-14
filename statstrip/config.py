@@ -10,6 +10,11 @@ CLAUDE_ENABLED = os.environ.get("STATSTRIP_CLAUDE", "on").lower() != "off"
 # tray icons. "0": float as a separate bar just above the taskbar instead.
 EMBED_TASKBAR = os.environ.get("STATSTRIP_TASKBAR", "1") != "0"
 
+# Where to sit inside the taskbar: "right" (default) hugs the tray icons;
+# "left" hugs the taskbar's left edge — use it when the readout is wide
+# enough to collide with Windows 11's centered app icons.
+TASKBAR_ALIGN = os.environ.get("STATSTRIP_ALIGN", "right").lower()
+
 LOCAL_REFRESH = float(os.environ.get("STATSTRIP_LOCAL_REFRESH", "2"))
 CLAUDE_REFRESH = float(os.environ.get("STATSTRIP_CLAUDE_REFRESH", "60"))
 DISK_PATH = os.environ.get("STATSTRIP_DISK_PATH", "C:\\")
