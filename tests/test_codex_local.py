@@ -26,29 +26,55 @@ def ago(seconds):
     return iso(datetime.now(timezone.utc) - timedelta(seconds=seconds))
 
 
+def window(used, window_minutes, resets_in=None, captured=None):
+    """One rate-limit window, shaped the way Codex 0.144.5 actually writes it:
+    an absolute `resets_at` epoch, not a relative offset."""
+    base = captured if captured is not None else time.time()
+    return {
+        "used_percent": used,
+        "window_minutes": window_minutes,
+        "resets_at": base + (resets_in if resets_in is not None
+                             else window_minutes * 60 / 2),
+    }
+
+
 def rollout_line(used_primary=10.0, used_secondary=50.0, ts=None,
                  primary_window=300, secondary_window=10080,
-                 primary_resets=3600, secondary_resets=86400):
-    """One token_count event, shaped the way Codex writes them."""
+                 primary_resets=None, secondary_resets=None):
+    """One token_count event, shaped the way Codex writes them.
+
+    Mirrors a payload captured from a real Codex turn, including the fields
+    this parser must ignore (limit_id, credits, plan_type) and the null
+    `secondary` a single-window plan sends.
+    """
+    ts = ts or ago(5)
+    captured = _parse_or_now(ts)
     return json.dumps({
-        "timestamp": ts or ago(5),
+        "timestamp": ts,
         "type": "event_msg",
         "payload": {
             "type": "token_count",
             "rate_limits": {
-                "primary": {
-                    "used_percent": used_primary,
-                    "window_minutes": primary_window,
-                    "resets_in_seconds": primary_resets,
-                },
-                "secondary": {
-                    "used_percent": used_secondary,
-                    "window_minutes": secondary_window,
-                    "resets_in_seconds": secondary_resets,
-                },
+                "limit_id": "codex",
+                "limit_name": None,
+                "primary": None if used_primary is None else window(
+                    used_primary, primary_window, primary_resets, captured),
+                "secondary": None if used_secondary is None else window(
+                    used_secondary, secondary_window, secondary_resets,
+                    captured),
+                "credits": {"has_credits": False, "unlimited": False,
+                            "balance": "0"},
+                "individual_limit": None,
+                "plan_type": "plus",
+                "rate_limit_reached_type": None,
             },
         },
     })
+
+
+def _parse_or_now(ts):
+    from statstrip.codex_local import _parse_timestamp
+    return _parse_timestamp(ts) or time.time()
 
 
 class CodexHome:
@@ -117,11 +143,99 @@ class ReaderTest(unittest.TestCase):
         home = CodexHome(self.stack)
         home.write("rollout-a.jsonl", [
             rollout_line(ts=ago(7200), primary_resets=60,
-                         secondary_resets=999999),
+                         secondary_window=10080, secondary_resets=500000),
         ])
         windows, _ = codex_local.collect()
         self.assertTrue(windows[0]["rolled_over"])   # reset 60s after capture
         self.assertFalse(windows[1]["rolled_over"])  # still open
+
+    def test_real_payload_from_codex_0_144_5(self):
+        """Verbatim rate_limits captured from a real Codex turn. Pins the two
+        things a synthetic fixture got wrong: resets is an absolute `resets_at`
+        epoch, and a single-window plan puts the *weekly* window in `primary`
+        with `secondary` null — so "primary is the 5h block" is not a safe
+        assumption."""
+        home = CodexHome(self.stack)
+        captured = time.time() - 9
+        home.write("rollout-real.jsonl", [json.dumps({
+            "timestamp": iso(datetime.fromtimestamp(captured, timezone.utc)),
+            "type": "event_msg",
+            "payload": {"type": "token_count", "rate_limits": {
+                "limit_id": "codex",
+                "limit_name": None,
+                "primary": {"used_percent": 4.0, "window_minutes": 10080,
+                            "resets_at": captured + 599938},
+                "secondary": None,
+                "credits": {"has_credits": False, "unlimited": False,
+                            "balance": "0"},
+                "individual_limit": None,
+                "plan_type": "plus",
+                "rate_limit_reached_type": None,
+            }},
+        })])
+        windows, at = codex_local.collect()
+        self.assertEqual(windows, [{"label": "7d", "used_pct": 4.0,
+                                    "rolled_over": False}])
+        self.assertAlmostEqual(at, captured, delta=1)
+
+    def test_absolute_resets_at_is_used(self):
+        home = CodexHome(self.stack)
+        captured = time.time() - 7200
+        home.write("rollout-a.jsonl", [json.dumps({
+            "timestamp": iso(datetime.fromtimestamp(captured, timezone.utc)),
+            "payload": {"rate_limits": {"primary": {
+                "used_percent": 90.0, "window_minutes": 300,
+                "resets_at": captured + 60,  # reset an hour before now
+            }}},
+        })])
+        windows, _ = codex_local.collect()
+        self.assertTrue(windows[0]["rolled_over"])
+
+    def test_relative_resets_in_seconds_still_accepted(self):
+        """The format is undocumented; tolerate the relative form too."""
+        home = CodexHome(self.stack)
+        captured = time.time() - 7200
+        home.write("rollout-a.jsonl", [json.dumps({
+            "timestamp": iso(datetime.fromtimestamp(captured, timezone.utc)),
+            "payload": {"rate_limits": {"primary": {
+                "used_percent": 90.0, "window_minutes": 300,
+                "resets_in_seconds": 60,
+            }}},
+        })])
+        windows, _ = codex_local.collect()
+        self.assertTrue(windows[0]["rolled_over"])
+
+    def test_implausible_reset_is_ignored_not_guessed(self):
+        """A resets_at in milliseconds (or any unit change) must not mark a
+        live window as rolled over, nor hide a stale one."""
+        home = CodexHome(self.stack)
+        captured = time.time() - 60
+        home.write("rollout-a.jsonl", [json.dumps({
+            "timestamp": iso(datetime.fromtimestamp(captured, timezone.utc)),
+            "payload": {"rate_limits": {"primary": {
+                "used_percent": 50.0, "window_minutes": 300,
+                "resets_at": (captured + 600) * 1000,  # ms, not s
+            }}},
+        })])
+        windows, _ = codex_local.collect()
+        self.assertFalse(windows[0]["rolled_over"])
+
+    def test_null_secondary_yields_single_window(self):
+        """A plan with one window must show that window, not a placeholder."""
+        home = CodexHome(self.stack)
+        home.write("rollout-a.jsonl", [
+            rollout_line(used_secondary=None, primary_window=10080,
+                         used_primary=4.0),
+        ])
+        windows, _ = codex_local.collect()
+        self.assertEqual([(w["label"], w["used_pct"]) for w in windows],
+                         [("7d", 4.0)])
+
+    def test_credits_block_is_not_mistaken_for_a_window(self):
+        home = CodexHome(self.stack)
+        home.write("rollout-a.jsonl", [rollout_line(used_secondary=None)])
+        windows, _ = codex_local.collect()
+        self.assertEqual(len(windows), 1)
 
     # --- login classification -------------------------------------------------
 

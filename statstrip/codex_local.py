@@ -15,7 +15,10 @@ numbers at all.
 
 Window names come from Codex, not from us. It reports how long each window
 is (window_minutes) and we label it from that, so whatever windows a plan
-actually has — 5h/weekly or otherwise — is what shows up.
+actually has is what shows up. This is not cosmetic: on the Plus plan
+observed here, Codex sends a single window under "primary" that is the
+*weekly* one (window_minutes 10080) and leaves "secondary" null — so
+assuming "primary is the 5-hour block" would have mislabelled it outright.
 
 The rollout format is internal to Codex and undocumented: every field is
 treated as optional, anything outside its expected contract means
@@ -155,16 +158,43 @@ def _window(entry, captured_at, now):
     # parser is out of date. Refuse it rather than print "CODEX 5h -1%".
     if used is None or not 0 <= used <= 100:
         return None
-    resets_in = _number(entry.get("resets_in_seconds"))
     # The snapshot's window may have rolled over since it was written, which
     # resets usage to zero. We can't know the new figure, but we do know the
     # old one is wrong — say so rather than show it.
-    rolled_over = resets_in is not None and now > captured_at + resets_in
+    reset_at = _reset_epoch(entry, captured_at)
+    rolled_over = reset_at is not None and now > reset_at
     return {
         "label": _label(entry.get("window_minutes")),
         "used_pct": float(used),
         "rolled_over": bool(rolled_over),
     }
+
+
+def _reset_epoch(entry, captured_at):
+    """When this window next resets, in epoch seconds, or None if unknown.
+
+    Codex reports `resets_at` as an absolute epoch (observed on 0.144.5);
+    `resets_in_seconds` is accepted too since the format is undocumented and
+    the relative form is the more obvious thing to switch to.
+    """
+    at = _number(entry.get("resets_at"))
+    if at is None:
+        rel = _number(entry.get("resets_in_seconds"))
+        at = captured_at + rel if rel is not None else None
+    if at is None:
+        return None
+    # A reset can't already have happened when the snapshot was taken, and
+    # can't be further out than one whole window. Outside that, we've misread
+    # the field (seconds vs milliseconds, a unit change) — and a wrong reset
+    # time is worse than none: it would either hide a stale reading or mark a
+    # live one as rolled over.
+    window = _number(entry.get("window_minutes"))
+    latest = captured_at + window * 60 if window else None
+    if at < captured_at - _FUTURE_TOLERANCE:
+        return None
+    if latest is not None and at > latest + _FUTURE_TOLERANCE:
+        return None
+    return at
 
 
 # Codex is Rust and emits RFC3339 with nanosecond precision, which
