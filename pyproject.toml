@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "statstrip"
-version = "2.0.0"
+version = "1.0.0"
 description = "Live CPU, RAM, disk, GPU and Claude Code / OpenAI Codex usage limits inside the Windows taskbar."
 readme = "README.md"
 license = { text = "MIT" }

@@ -4,10 +4,10 @@ All notable changes to StatStrip are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project uses [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — 2026-07-17
+## [1.0.0] — 2026-07-17
 
-StatStrip 1.x showed your machine and your Claude usage. 2.0 adds Codex, and
-makes both gauges honest about what they actually know.
+First stable release. 0.1.0 showed your machine and your Claude usage; 1.0
+adds Codex, and makes both gauges honest about what they actually know.
 
 ### Added
 
@@ -90,4 +90,5 @@ Initial release.
 - `install.bat` with automatic Python detection and install, and a Startup-folder
   shortcut requiring no admin rights.
 
-[2.0.0]: https://github.com/wassupjay/statstrip/releases/tag/v2.0.0
+[1.0.0]: https://github.com/wassupjay/statstrip/releases/tag/v1.0.0
+[0.1.0]: https://github.com/wassupjay/statstrip/releases/tag/v0.1.0
