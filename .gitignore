@@ -6,3 +6,9 @@ dist/
 statstrip-stats.json
 stats.json
 PROGRESS.md
+
+# October desktop — local canvas state
+.october/
+
+# Claude Code local state (worktrees live here — never commit them)
+.claude/
