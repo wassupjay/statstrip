@@ -149,52 +149,66 @@ def _label(window_minutes):
     return f"{days:.0f}d" if abs(days - round(days)) < 0.05 else f"{days:.1f}d"
 
 
-def _window(entry, captured_at, now):
-    if not isinstance(entry, dict):
-        return None
-    used = _number(entry.get("used_percent"))
+def shape_window(used, window_minutes, reset_epoch, captured_at, now):
+    """One rate-limit window in the shape the collector and display expect.
+
+    Shared with codex_appserver: the app-server and the rollout log report the
+    same three facts under different names, and both must be sanity-checked
+    identically — a number we'd refuse from one source is no more trustworthy
+    from the other.
+    """
+    used = _number(used)
     # Out of [0, 100] means the field no longer means what we assume (a
     # sentinel, a unit change) — the only cheap signal we get that this
     # parser is out of date. Refuse it rather than print "CODEX 5h -1%".
     if used is None or not 0 <= used <= 100:
         return None
-    # The snapshot's window may have rolled over since it was written, which
+    # The window may have rolled over since the reading was taken, which
     # resets usage to zero. We can't know the new figure, but we do know the
     # old one is wrong — say so rather than show it.
-    reset_at = _reset_epoch(entry, captured_at)
-    rolled_over = reset_at is not None and now > reset_at
+    reset_epoch = _sane_reset(reset_epoch, window_minutes, captured_at)
+    rolled_over = reset_epoch is not None and now > reset_epoch
     return {
-        "label": _label(entry.get("window_minutes")),
+        "label": _label(window_minutes),
         "used_pct": float(used),
         "rolled_over": bool(rolled_over),
     }
 
 
-def _reset_epoch(entry, captured_at):
-    """When this window next resets, in epoch seconds, or None if unknown.
+def _sane_reset(at, window_minutes, captured_at):
+    """The reset epoch, or None when it can't be true.
 
-    Codex reports `resets_at` as an absolute epoch (observed on 0.144.5);
-    `resets_in_seconds` is accepted too since the format is undocumented and
-    the relative form is the more obvious thing to switch to.
+    A reset can't already have happened when the reading was taken, and can't
+    be further out than one whole window. Outside that we've misread the field
+    (seconds vs milliseconds, a unit change) — and a wrong reset time is worse
+    than none: it would either hide a stale reading or mark a live one as
+    rolled over.
     """
-    at = _number(entry.get("resets_at"))
-    if at is None:
-        rel = _number(entry.get("resets_in_seconds"))
-        at = captured_at + rel if rel is not None else None
+    at = _number(at)
     if at is None:
         return None
-    # A reset can't already have happened when the snapshot was taken, and
-    # can't be further out than one whole window. Outside that, we've misread
-    # the field (seconds vs milliseconds, a unit change) — and a wrong reset
-    # time is worse than none: it would either hide a stale reading or mark a
-    # live one as rolled over.
-    window = _number(entry.get("window_minutes"))
+    window = _number(window_minutes)
     latest = captured_at + window * 60 if window else None
     if at < captured_at - _FUTURE_TOLERANCE:
         return None
     if latest is not None and at > latest + _FUTURE_TOLERANCE:
         return None
     return at
+
+
+def _window(entry, captured_at, now):
+    """One window from a rollout log line (snake_case, `resets_at` epoch)."""
+    if not isinstance(entry, dict):
+        return None
+    # Codex 0.144.5 writes an absolute `resets_at`; `resets_in_seconds` is
+    # accepted too since the format is undocumented and the relative form is
+    # the obvious thing to switch to.
+    reset = _number(entry.get("resets_at"))
+    if reset is None:
+        rel = _number(entry.get("resets_in_seconds"))
+        reset = captured_at + rel if rel is not None else None
+    return shape_window(entry.get("used_percent"), entry.get("window_minutes"),
+                        reset, captured_at, now)
 
 
 # Codex is Rust and emits RFC3339 with nanosecond precision, which

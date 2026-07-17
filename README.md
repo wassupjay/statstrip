@@ -34,11 +34,10 @@ folder.
   for your own usage numbers — the exact same request Claude Code makes when
   you run `/usage`). If you don't use Claude Code, the gauges just show
   "login required"; set `STATSTRIP_CLAUDE=off` to hide them.
-- **The Codex gauges don't even use the network.** Codex CLI already records
-  your usage percentages in its own session logs on this PC, so StatStrip
-  just reads them — no request to OpenAI, no token used, nothing to rate
-  limit. If you don't use Codex, they show "login required"; set
-  `STATSTRIP_CODEX=off` to hide them.
+- **The Codex gauges don't spend any of your quota.** They ask your local
+  `codex` CLI for your usage (`account/rateLimits/read` — the same thing its
+  `/status` shows), which runs no model and costs no tokens. If you don't use
+  Codex, they show "login required"; set `STATSTRIP_CODEX=off` to hide them.
 - **Your stats stay on your machine.** CPU/RAM/disk/GPU numbers are read
   locally and served only on `127.0.0.1` (reachable from your own PC alone).
   Nothing is uploaded, logged, or shared with anyone — there is no server,
@@ -77,10 +76,17 @@ point any other script, dashboard, or website at the same local endpoint.
   Code logs (`~/.claude/projects`) and estimates percentages against your
   own historical maximum (can exceed 100% — it's an estimate, not a plan
   limit; shown with a `~` prefix).
-- **`statstrip/codex_local.py`** — Codex usage: reads the rate-limit
-  snapshot Codex CLI writes into its own session logs
-  (`~/.codex/sessions/*.jsonl`) — the same numbers its `/status` shows. No
-  network call and no token, so nothing can rate-limit it. Codex names its
+- **`statstrip/codex_appserver.py`** — primary Codex usage source: asks
+  `codex app-server` for `account/rateLimits/read`, the same call the Codex
+  TUI makes to refresh its usage display. It runs no model, so it costs **no
+  tokens** — you can poll it every minute for free — and it reports your
+  whole account, including Codex you ran on another machine.
+- **`statstrip/codex_local.py`** — fallback Codex source
+  (`STATSTRIP_CODEX=log` forces it): reads the rate-limit snapshot Codex CLI
+  writes into its own session logs (`~/.codex/sessions/*.jsonl`). Fully
+  passive, but only as fresh as the last Codex turn *on this machine* —
+  measured 6 points behind the live figure — so its readings carry an age
+  marker. Codex names its
   own windows (`5h`, `7d`, …) and StatStrip shows whatever your plan
   reports rather than assuming — on a Plus plan that's a single weekly
   window (`CODEX 7d 4%`); other plans report more. Because Codex only records usage when it
@@ -136,7 +142,7 @@ All optional, set as environment variables before launching:
 | Variable              | Default              | Meaning                                   |
 |------------------------|-----------------------|--------------------------------------------|
 | `STATSTRIP_CLAUDE`           | `on`                  | `on`: real plan-limit % via Claude Code's usage API; shows `CLAUDE login required` when there's no usable local login, or `CLAUDE usage unavailable` for a transient failure (rate limit, network). `estimate`: ccusage heuristic over local logs (`npm install -g ccusage`), rendered with a `~` prefix. `off`: hide the gauges. |
-| `STATSTRIP_CODEX`            | `on`                  | `on`: usage percentages read from Codex CLI's own session logs (no network call); shows `CODEX login required` when Codex isn't logged in, or `CODEX usage unavailable` when it's logged in but hasn't recorded a reading yet. `off`: hide the gauges. |
+| `STATSTRIP_CODEX`            | `on`                  | `on`: live percentages via `codex app-server` (costs no tokens), falling back to Codex's session logs. `log`: only read the session logs — passive, but only as fresh as your last local Codex turn. Either way, shows `CODEX login required` when Codex isn't logged in, or `CODEX usage unavailable` when there's no usable reading yet. `off`: hide the gauges. |
 | `STATSTRIP_TASKBAR`          | `1`                   | `1`: embed the readout inside the taskbar, left of the tray icons. `0`: float a separate bar just above the taskbar. |
 | `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
 | `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
