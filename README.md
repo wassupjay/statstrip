@@ -156,6 +156,40 @@ Anything else — a browser tab, another script, an Electron app — can hit the
 `/stats` endpoint or read the JSON directly. (Browser pages need `STATSTRIP_CORS`;
 it's off by default.)
 
+## Roadmap
+
+Ideas for where StatStrip goes next. None are locked in — they're here to
+show the direction and to mark good places to jump in. If one interests you,
+there's likely a matching [issue](https://github.com/wassupjay/statstrip/issues)
+tagged `good first issue` or `help wanted`; comment there before starting so we
+don't duplicate work.
+
+- **Skins / themes.** Colors and font are currently hardcoded
+  (`display.py:22-23`, `:263`). Make them configurable — env vars or a small
+  theme file — and ship a few presets (light, high-contrast, mono, a couple of
+  accent colors). Good first contribution: self-contained, no data-layer risk.
+- **More AI providers.** The Claude and Codex gauges follow the same shape
+  (read a real usage source, render honest percentages). Gemini CLI, Cursor,
+  and others expose usage the same way and could slot in beside them.
+- **Pick your metrics.** Let users choose which readings show and in what
+  order (per-core CPU, network throughput, battery, temperatures), instead of
+  the fixed CPU/RAM/DISK/GPU set.
+- **Click to expand.** A click on the strip could open a small panel with the
+  detail the taskbar has no room for — GPU VRAM, per-window reset times, the
+  history behind an estimate.
+- **A proper config file.** Today everything is environment variables. A
+  `statstrip.toml` next to a system-tray settings toggle would be friendlier
+  for non-technical users than editing env vars.
+- **Continuous integration.** Run the 101 tests on every push across the
+  supported Python versions, so a regression is caught before it ships.
+- **Beyond Windows?** The taskbar embedding is Windows-only by nature, but the
+  collector and the `/stats` feed are portable — a Linux tray applet or a macOS
+  menu-bar consumer could reuse the whole data layer untouched. A big lift, but
+  the architecture already allows it.
+
+Have a different idea? [Open an issue](https://github.com/wassupjay/statstrip/issues/new) —
+feature requests are as welcome as code.
+
 ## Development
 
 Requires Python 3.9+ on Windows. NVIDIA GPU optional — it degrades gracefully.
@@ -185,7 +219,8 @@ Run the tests (no dependencies beyond the package itself):
 python -m unittest discover -s tests
 ```
 
-Contributions welcome — issues and PRs both. The one house rule is the one above:
+Contributions welcome — issues and PRs both. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup and the one house rule:
 **a gauge must never show a number it can't stand behind.** If a source fails, is
 stale, or returns something outside its contract, say so or say nothing.
 
