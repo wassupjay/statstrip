@@ -82,7 +82,8 @@ point any other script, dashboard, or website at the same local endpoint.
   (`~/.codex/sessions/*.jsonl`) — the same numbers its `/status` shows. No
   network call and no token, so nothing can rate-limit it. Codex names its
   own windows (`5h`, `7d`, …) and StatStrip shows whatever your plan
-  reports rather than assuming. Because Codex only records usage when it
+  reports rather than assuming — on a Plus plan that's a single weekly
+  window (`CODEX 7d 4%`); other plans report more. Because Codex only records usage when it
   runs, a reading older than 15 minutes is marked with its age (e.g.
   `(3h ago)`), and a window that has since reset shows `reset` instead of a
   number that's known to be out of date.
