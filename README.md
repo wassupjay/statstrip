@@ -4,7 +4,7 @@
 
 No extra window, no wasted screen space: the numbers sit in the empty part of the taskbar itself.
 
-![StatStrip running in the Windows taskbar, showing CPU 13%, RAM 40%, DISK 38%, GPU0 0%, GPU1 0%, CLAUDE 5h 79%, WEEK 16%, CODEX 7d 18% to the left of the taskbar icons](images/screenshot.png)
+![StatStrip running in the Windows taskbar, showing CPU 13%, RAM 40%, DISK 38%, GPU0 0%, GPU1 0%, CLAUDE 5h 79%, WEEK 16%, CODEX 7d 18% to the left of the taskbar icons](https://raw.githubusercontent.com/wassupjay/statstrip/main/images/screenshot.png)
 
 <sup>That's the real thing, in a real taskbar — not a mockup.</sup>
 
