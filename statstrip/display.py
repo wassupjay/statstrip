@@ -54,9 +54,6 @@ def build_text():
         # don't keep displaying frozen numbers as if they were live.
         return "collector stalled — data stale"
 
-    def pct(v):
-        return f"{v:.0f}%" if isinstance(v, (int, float)) else "?"
-
     gpu_txt = "  ".join(
         f"GPU{g.get('index', '?')} {g.get('util_pct', '?')}%"
         for g in s.get("gpus", []) if isinstance(g, dict)
@@ -69,25 +66,45 @@ def build_text():
         gpu_txt,
     ]
     if config.CLAUDE_ENABLED:
-        status = s.get("claude_status")
-        if status == "login_required":
-            parts.append("CLAUDE login required")
-        elif status == "unavailable":
-            # Transient (rate limited, network blip) — never claim login is
-            # needed for a problem that isn't about login.
-            parts.append("CLAUDE usage unavailable")
-        else:
-            # "~" marks estimate mode: relative to your own history, not a
-            # real plan limit.
-            mark = "~" if status == "estimate" else ""
-            claude_5h = pct(s.get("claude_5h_pct")) if s.get("claude_active") else "idle"
-            parts.append(f"CLAUDE 5h {mark}{claude_5h}")
-            parts.append(f"WEEK {mark}{pct(s.get('claude_week_pct'))}")
+        parts.extend(claude_parts(s))
 
     if config.CODEX_ENABLED:
         parts.extend(codex_parts(s))
 
     return "   ".join(parts)
+
+
+def pct(v):
+    return f"{v:.0f}%" if isinstance(v, (int, float)) and not isinstance(v, bool) else "?"
+
+
+def claude_parts(s):
+    """Render the Claude gauges from a snapshot.
+
+    A reading is held through transient failures rather than blanked — the
+    endpoint rate-limits routinely, and one 429 is no reason to throw away a
+    number that was right a minute ago. The age is shown once it's old
+    enough to matter, so a held reading can't quietly pose as current.
+    """
+    status = s.get("claude_status")
+    if status == "login_required":
+        return ["CLAUDE login required"]
+    if status not in ("ok", "estimate"):
+        # Never claim login is needed for a problem that isn't about login.
+        return ["CLAUDE usage unavailable"]
+
+    # "~" marks estimate mode: relative to your own history, not a real plan
+    # limit.
+    mark = "~" if status == "estimate" else ""
+    five_h = pct(s.get("claude_5h_pct")) if s.get("claude_active") else "idle"
+    out = [f"CLAUDE 5h {mark}{five_h}", f"WEEK {mark}{pct(s.get('claude_week_pct'))}"]
+
+    captured_at = s.get("claude_captured_at")
+    if isinstance(captured_at, (int, float)):
+        age = max(0.0, time.time() - captured_at)
+        if age > config.CLAUDE_STALE_AFTER:
+            out.append(f"({age_text(age)} ago)")
+    return out
 
 
 def codex_parts(s):
