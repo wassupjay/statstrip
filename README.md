@@ -4,9 +4,9 @@
 
 No extra window, no wasted screen space: the numbers sit in the empty part of the taskbar itself.
 
-```
-CPU 10%   RAM 41%   DISK 37%   GPU0 13%  GPU1 17%   CLAUDE 5h 75%   WEEK 16%   CODEX 7d 14%
-```
+![StatStrip running in the Windows taskbar, showing CPU 13%, RAM 40%, DISK 38%, GPU0 0%, GPU1 0%, CLAUDE 5h 79%, WEEK 16%, CODEX 7d 18% to the left of the taskbar icons](images/screenshot.png)
+
+<sup>That's the real thing, in a real taskbar — not a mockup.</sup>
 
 If you use Claude Code or Codex all day, the question you actually care about isn't
 CPU — it's *how much of my 5-hour block have I burned?* StatStrip keeps that

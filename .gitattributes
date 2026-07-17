@@ -3,3 +3,10 @@
 # force CRLF for Windows script types everywhere, including archives.
 *.bat text eol=crlf
 *.vbs text eol=crlf
+
+# Images are binary. Git detects this correctly today, but that's inference
+# from file contents — say it outright so no future `* text=auto` or an
+# aggressive core.autocrlf can rewrite bytes inside a PNG.
+*.png binary
+*.jpg binary
+*.gif binary
