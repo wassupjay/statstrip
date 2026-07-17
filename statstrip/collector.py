@@ -43,6 +43,7 @@ _state = {
                                 # it themselves so a stuck collector can't
                                 # freeze a reading at "just now"
     "codex_status": None,
+    "codex_source": None,  # "live" (app-server) or "log" (session log)
     "updated_at": None,
 }
 
@@ -89,22 +90,33 @@ def collect_claude():
 
 
 def collect_codex():
-    """Returns (windows, captured_at, status).
+    """Returns (windows, captured_at, status, source).
 
-    status: "ok" (real percentages from Codex's session log), "login_required"
-    (Codex is set up but not logged in), "unavailable" (no usable snapshot —
-    no turns run yet, or a format we don't recognise), or None (disabled).
+    status: "ok" (real percentages), "login_required" (Codex is set up but not
+    logged in), "unavailable" (no usable reading — no turns run yet, or a
+    format we don't recognise), or None (disabled).
+
+    source: "live" (app-server, current), "log" (session log, only as fresh as
+    the last local turn), or None. Reported so a live source that has quietly
+    started failing is visible instead of being masked by the fallback.
     """
     if not config.CODEX_ENABLED:
-        return [], None, None
-    from . import codex_local
+        return [], None, None, None
+    from . import codex_appserver, codex_local
+    if config.CODEX_LIVE:
+        # Free and always current — the log only knows about turns run on this
+        # machine, and was measured 6 points behind the real figure.
+        live = codex_appserver.collect()
+        if live is not None:
+            windows, captured_at = live
+            return windows, captured_at, "ok", "live"
     result = codex_local.collect()
     if result == "login_required":
-        return [], None, "login_required"
+        return [], None, "login_required", None
     if result is None:
-        return [], None, "unavailable"
+        return [], None, "unavailable", None
     windows, captured_at = result
-    return windows, captured_at, "ok"
+    return windows, captured_at, "ok", "log"
 
 
 _write_lock = threading.Lock()  # local_loop, claude_loop and codex_loop all write
@@ -211,11 +223,12 @@ def codex_loop():
         return
     while True:
         try:
-            windows, captured_at, status = collect_codex()
+            windows, captured_at, status, source = collect_codex()
             with _lock:
                 _state["codex_windows"] = windows
                 _state["codex_captured_at"] = captured_at
                 _state["codex_status"] = status
+                _state["codex_source"] = source
             write_snapshot()
         except Exception as e:
             # Same rule as the other loops: a rollout-format change must never
@@ -226,6 +239,7 @@ def codex_loop():
                 _state["codex_windows"] = []
                 _state["codex_captured_at"] = None
                 _state["codex_status"] = "unavailable"
+                _state["codex_source"] = None
             write_snapshot()
             print(f"codex_loop error: {e}")
         time.sleep(config.CODEX_REFRESH)

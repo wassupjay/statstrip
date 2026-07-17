@@ -1,4 +1,5 @@
-"""Tests for the collector's Codex wiring.
+"""Tests for the collector's Codex wiring (log source; see
+test_codex_appserver.py for live-source selection).
 
 The loop's job is to never freeze a reading on screen: a thread that dies, or
 one that keeps failing while holding its last success, both show stale
@@ -11,9 +12,16 @@ from statstrip import collector
 
 
 class CollectCodexTest(unittest.TestCase):
+    def setUp(self):
+        # These cover the log path. Without pinning the source off, they would
+        # reach the real app-server and assert against live account data.
+        patcher = mock.patch.object(collector.config, "CODEX_LIVE", False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_disabled_reports_nothing(self):
         with mock.patch.object(collector.config, "CODEX_ENABLED", False):
-            self.assertEqual(collector.collect_codex(), ([], None, None))
+            self.assertEqual(collector.collect_codex(), ([], None, None, None))
 
     def test_reading_maps_to_ok(self):
         windows = [{"label": "5h", "used_pct": 42.0, "rolled_over": False}]
@@ -21,20 +29,20 @@ class CollectCodexTest(unittest.TestCase):
              mock.patch("statstrip.codex_local.collect",
                         return_value=(windows, 1234.0)):
             self.assertEqual(collector.collect_codex(),
-                             (windows, 1234.0, "ok"))
+                             (windows, 1234.0, "ok", "log"))
 
     def test_login_required_passes_through(self):
         with mock.patch.object(collector.config, "CODEX_ENABLED", True), \
              mock.patch("statstrip.codex_local.collect",
                         return_value="login_required"):
             self.assertEqual(collector.collect_codex(),
-                             ([], None, "login_required"))
+                             ([], None, "login_required", None))
 
     def test_no_reading_maps_to_unavailable(self):
         with mock.patch.object(collector.config, "CODEX_ENABLED", True), \
              mock.patch("statstrip.codex_local.collect", return_value=None):
             self.assertEqual(collector.collect_codex(),
-                             ([], None, "unavailable"))
+                             ([], None, "unavailable", None))
 
 
 class CodexLoopTest(unittest.TestCase):
@@ -77,7 +85,7 @@ class CodexLoopTest(unittest.TestCase):
     def test_success_stores_the_reading(self):
         windows = [{"label": "7d", "used_pct": 9.0, "rolled_over": False}]
         with mock.patch.object(collector, "collect_codex",
-                               return_value=(windows, 999.0, "ok")):
+                               return_value=(windows, 999.0, "ok", "live")):
             self.run_one_iteration()
         self.assertEqual(collector._state["codex_windows"], windows)
         self.assertEqual(collector._state["codex_captured_at"], 999.0)

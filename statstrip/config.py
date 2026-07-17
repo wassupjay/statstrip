@@ -18,12 +18,14 @@ CLAUDE_BACKOFF_MAX = float(os.environ.get("STATSTRIP_CLAUDE_BACKOFF_MAX", "1800"
 # current — but it's still better than blanking the gauges over one 429.
 CLAUDE_STALE_AFTER = float(os.environ.get("STATSTRIP_CLAUDE_STALE_AFTER", "600"))
 
-# Codex gauges. "on" (default): usage percentages read from Codex CLI's own
-# session logs — shows "login required" when Codex isn't logged in. "off":
-# hide the gauges. There's no estimate mode: unlike Claude, Codex records the
-# real percentages locally, so there's nothing to approximate.
+# Codex gauges. "on" (default): live percentages from `codex app-server`
+# (account/rateLimits/read — the same call its TUI makes; runs no model, so it
+# costs no tokens), falling back to Codex's session logs when the app-server
+# isn't usable. "log": only read the session logs — passive, but only as fresh
+# as your last local Codex turn. "off": hide the gauges.
 CODEX_MODE = os.environ.get("STATSTRIP_CODEX", "on").lower()
 CODEX_ENABLED = CODEX_MODE != "off"
+CODEX_LIVE = CODEX_MODE not in ("off", "log")
 
 # Codex only records usage when it actually runs, so a reading is a point in
 # time, not a live feed. Past this age it's shown with its age attached
