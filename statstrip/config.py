@@ -8,6 +8,16 @@ import tempfile
 CLAUDE_MODE = os.environ.get("STATSTRIP_CLAUDE", "on").lower()
 CLAUDE_ENABLED = CLAUDE_MODE != "off"
 
+# Claude's usage endpoint rate-limits, and its Retry-After is unhelpful
+# (observed: "0"). Polling straight through a 429 is what keeps us in the
+# penalty box, so each consecutive failure doubles the wait up to this cap.
+CLAUDE_BACKOFF_MAX = float(os.environ.get("STATSTRIP_CLAUDE_BACKOFF_MAX", "1800"))
+
+# Past this age a held-over Claude reading is shown with its age attached.
+# Claude usage does move while you work, so an old number must never pose as
+# current — but it's still better than blanking the gauges over one 429.
+CLAUDE_STALE_AFTER = float(os.environ.get("STATSTRIP_CLAUDE_STALE_AFTER", "600"))
+
 # Codex gauges. "on" (default): usage percentages read from Codex CLI's own
 # session logs — shows "login required" when Codex isn't logged in. "off":
 # hide the gauges. There's no estimate mode: unlike Claude, Codex records the

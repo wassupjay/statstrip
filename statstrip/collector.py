@@ -36,6 +36,8 @@ _state = {
     "gpus": [],  # [{index, util_pct, mem_used_mb, mem_total_mb}]
     "claude_5h_pct": None, "claude_active": False,
     "claude_week_pct": None, "claude_status": None,
+    "claude_captured_at": None,  # epoch of the last good reading; consumers age
+                                 # it themselves, same as codex_captured_at
     "codex_windows": [],  # [{label, used_pct, rolled_over}], as Codex names them
     "codex_captured_at": None,  # epoch when Codex recorded them; consumers age
                                 # it themselves so a stuck collector can't
@@ -155,21 +157,53 @@ def local_loop():
 def claude_loop():
     if not config.CLAUDE_ENABLED:
         return
+    failures = 0
     while True:
         try:
             active, five_h, week, status = collect_claude()
             with _lock:
-                _state["claude_active"] = active
-                _state["claude_5h_pct"] = five_h
-                _state["claude_week_pct"] = week
-                _state["claude_status"] = status
+                if status in ("ok", "estimate"):
+                    _state["claude_active"] = active
+                    _state["claude_5h_pct"] = five_h
+                    _state["claude_week_pct"] = week
+                    _state["claude_captured_at"] = time.time()
+                    _state["claude_status"] = status
+                    failures = 0
+                elif status == "login_required":
+                    _state["claude_active"] = False
+                    _state["claude_5h_pct"] = None
+                    _state["claude_week_pct"] = None
+                    _state["claude_captured_at"] = None
+                    _state["claude_status"] = "login_required"
+                    failures = 0
+                else:
+                    # Transient (rate limited, network blip). Usage doesn't
+                    # move much in a minute, so hold the last good reading and
+                    # let the display age it — blanking the gauges over one
+                    # 429 is what made them flicker.
+                    failures += 1
+                    if _state["claude_captured_at"] is None:
+                        _state["claude_status"] = "unavailable"
             write_snapshot()
         except Exception as e:
             # Same rule as local_loop: a ccusage hiccup or schema change
             # must never kill the thread — dead threads keep showing the
             # last percentages as if they were live.
+            failures += 1
             print(f"claude_loop error: {e}")
-        time.sleep(config.CLAUDE_REFRESH)
+        time.sleep(_claude_delay(failures))
+
+
+def _claude_delay(failures):
+    """Seconds to wait before the next Claude poll.
+
+    Backs off while the endpoint refuses us. Polling straight through a 429
+    every 60s doesn't just waste calls — it keeps the rate limit alive, so
+    the gauges stay broken far longer than they need to.
+    """
+    if not failures:
+        return config.CLAUDE_REFRESH
+    return min(config.CLAUDE_REFRESH * 2 ** failures, config.CLAUDE_BACKOFF_MAX)
 
 
 def codex_loop():
