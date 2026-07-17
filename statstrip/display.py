@@ -84,7 +84,67 @@ def build_text():
             parts.append(f"CLAUDE 5h {mark}{claude_5h}")
             parts.append(f"WEEK {mark}{pct(s.get('claude_week_pct'))}")
 
+    if config.CODEX_ENABLED:
+        parts.extend(codex_parts(s))
+
     return "   ".join(parts)
+
+
+def codex_parts(s):
+    """Render the Codex gauges from a snapshot. Window names come from Codex
+    itself, so a plan with different windows still reads correctly."""
+    status = s.get("codex_status")
+    if status == "login_required":
+        return ["CODEX login required"]
+    if status != "ok":
+        # "unavailable" (no snapshot yet) or an unknown status — never guess.
+        return ["CODEX usage unavailable"]
+
+    windows = s.get("codex_windows")
+    if not isinstance(windows, list) or not windows:
+        return ["CODEX usage unavailable"]
+
+    # Age is derived here from the capture instant rather than read as a
+    # precomputed number, so a collector that stops updating shows a reading
+    # growing visibly older instead of one frozen at "just now".
+    captured_at = s.get("codex_captured_at")
+    if not isinstance(captured_at, (int, float)):
+        return ["CODEX usage unavailable"]
+    age = max(0.0, time.time() - captured_at)
+
+    out = []
+    for i, w in enumerate(windows):
+        if not isinstance(w, dict):
+            continue
+        label = w.get("label") or f"w{i + 1}"
+        used = w.get("used_pct")
+        if w.get("rolled_over"):
+            # The window reset since this snapshot: the old number is known
+            # to be wrong and the new one is unknown until Codex next runs.
+            value = "reset"
+        elif isinstance(used, (int, float)) and not isinstance(used, bool):
+            value = f"{used:.0f}%"
+        else:
+            value = "?"
+        # Prefix the first line we actually emit — keying this to the source
+        # index would drop the label entirely if entry 0 were skipped, and
+        # the gauge would read as another Claude window.
+        out.append(f"{'CODEX ' if not out else ''}{label} {value}")
+    if not out:
+        return ["CODEX usage unavailable"]
+    if age > config.CODEX_STALE_AFTER:
+        out.append(f"({age_text(age)} ago)")
+    return out
+
+
+def age_text(seconds):
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes / 60
+    if hours < 24:
+        return f"{hours:.0f}h"
+    return f"{hours / 24:.0f}d"
 
 
 # ---------------------------------------------------------------------------

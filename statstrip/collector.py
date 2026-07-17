@@ -1,7 +1,8 @@
 """Data-extraction layer only. No UI. Everything is read from this PC.
 
-Polls CPU/RAM/DISK/GPU via psutil/pynvml and Claude usage via the local
-ccusage CLI, then writes the merged snapshot to a stats file AND serves it
+Polls CPU/RAM/DISK/GPU via psutil/pynvml, Claude usage via Claude Code's own
+session, and Codex usage via Codex CLI's session logs, then writes the merged
+snapshot to a stats file AND serves it
 over a tiny local HTTP endpoint so any other script/app/website can consume
 it independently of display.py.
 
@@ -35,6 +36,11 @@ _state = {
     "gpus": [],  # [{index, util_pct, mem_used_mb, mem_total_mb}]
     "claude_5h_pct": None, "claude_active": False,
     "claude_week_pct": None, "claude_status": None,
+    "codex_windows": [],  # [{label, used_pct, rolled_over}], as Codex names them
+    "codex_captured_at": None,  # epoch when Codex recorded them; consumers age
+                                # it themselves so a stuck collector can't
+                                # freeze a reading at "just now"
+    "codex_status": None,
     "updated_at": None,
 }
 
@@ -80,7 +86,26 @@ def collect_claude():
     return (*result, "ok")
 
 
-_write_lock = threading.Lock()  # local_loop and claude_loop both write
+def collect_codex():
+    """Returns (windows, captured_at, status).
+
+    status: "ok" (real percentages from Codex's session log), "login_required"
+    (Codex is set up but not logged in), "unavailable" (no usable snapshot —
+    no turns run yet, or a format we don't recognise), or None (disabled).
+    """
+    if not config.CODEX_ENABLED:
+        return [], None, None
+    from . import codex_local
+    result = codex_local.collect()
+    if result == "login_required":
+        return [], None, "login_required"
+    if result is None:
+        return [], None, "unavailable"
+    windows, captured_at = result
+    return windows, captured_at, "ok"
+
+
+_write_lock = threading.Lock()  # local_loop, claude_loop and codex_loop all write
 _last_written = None
 _last_write_time = 0.0
 WRITE_HEARTBEAT = 30  # rewrite at least this often so the file's updated_at
@@ -147,6 +172,31 @@ def claude_loop():
         time.sleep(config.CLAUDE_REFRESH)
 
 
+def codex_loop():
+    if not config.CODEX_ENABLED:
+        return
+    while True:
+        try:
+            windows, captured_at, status = collect_codex()
+            with _lock:
+                _state["codex_windows"] = windows
+                _state["codex_captured_at"] = captured_at
+                _state["codex_status"] = status
+            write_snapshot()
+        except Exception as e:
+            # Same rule as the other loops: a rollout-format change must never
+            # kill the thread and leave the last percentages frozen on screen.
+            # Clear the reading too — a poll that keeps failing must stop
+            # showing its last success as if it were current.
+            with _lock:
+                _state["codex_windows"] = []
+                _state["codex_captured_at"] = None
+                _state["codex_status"] = "unavailable"
+            write_snapshot()
+            print(f"codex_loop error: {e}")
+        time.sleep(config.CODEX_REFRESH)
+
+
 class StatsHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -175,6 +225,7 @@ def main():
         )
     threading.Thread(target=local_loop, daemon=True).start()
     threading.Thread(target=claude_loop, daemon=True).start()
+    threading.Thread(target=codex_loop, daemon=True).start()
     print(f"collector running: http://127.0.0.1:{config.SERVE_PORT}/stats "
           f"(also writing {config.STATS_FILE})")
     server.serve_forever()
