@@ -1,5 +1,10 @@
 # StatStrip
 
+[![PyPI](https://img.shields.io/pypi/v/statstrip)](https://pypi.org/project/statstrip/)
+[![Python](https://img.shields.io/pypi/pyversions/statstrip)](https://pypi.org/project/statstrip/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078d6)](https://github.com/wassupjay/statstrip)
+
 **Live CPU, RAM, disk, GPU — and your Claude Code + OpenAI Codex usage limits — inside the Windows taskbar.**
 
 No extra window, no wasted screen space: the numbers sit in the empty part of the taskbar itself.
@@ -154,6 +159,17 @@ it's off by default.)
 ## Development
 
 Requires Python 3.9+ on Windows. NVIDIA GPU optional — it degrades gracefully.
+
+Published on PyPI — [pypi.org/project/statstrip](https://pypi.org/project/statstrip/):
+
+```
+pip install statstrip
+statstrip-collector
+statstrip-display
+```
+
+This gives you the two commands and the `/stats` feed, but not the auto-start at
+login — for that, use `install.bat` above. Or work from a clone:
 
 ```
 git clone https://github.com/wassupjay/statstrip.git
