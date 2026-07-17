@@ -4,16 +4,44 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "statstrip"
-version = "0.1.0"
-description = "Always-on-top system stats bar for Windows: CPU, RAM, disk, GPU(s), and optional Claude and Codex usage gauges."
+version = "2.0.0"
+description = "Live CPU, RAM, disk, GPU and Claude Code / OpenAI Codex usage limits inside the Windows taskbar."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
+keywords = [
+    "windows", "taskbar", "system-monitor", "resource-monitor",
+    "cpu", "ram", "gpu", "disk-usage",
+    "claude", "claude-code", "codex", "openai-codex",
+    "ai-usage", "usage-tracker", "rate-limits", "token-usage",
+    "developer-tools",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+]
 dependencies = [
     "psutil",
     "pynvml",
     "requests",
 ]
+
+[project.urls]
+Homepage = "https://github.com/wassupjay/statstrip"
+Repository = "https://github.com/wassupjay/statstrip"
+Issues = "https://github.com/wassupjay/statstrip/issues"
+Changelog = "https://github.com/wassupjay/statstrip/blob/main/CHANGELOG.md"
 
 [project.gui-scripts]
 statstrip-collector = "statstrip.collector:main"
