@@ -1,157 +1,177 @@
 # StatStrip
 
-Live system stats right inside your Windows taskbar — CPU, RAM, disk, GPU,
-and your AI coding usage: Claude (5-hour block + weekly limit) and Codex.
-No extra window, no wasted screen space: the numbers sit in the empty part
-of the taskbar itself.
+**Live CPU, RAM, disk, GPU — and your Claude Code + OpenAI Codex usage limits — inside the Windows taskbar.**
+
+No extra window, no wasted screen space: the numbers sit in the empty part of the taskbar itself.
 
 ```
-CPU 34%   RAM 61%   DISK 72%   GPU0 18%   CLAUDE 5h 47%   WEEK 63%   CODEX 5h 12%   7d 40%
+CPU 10%   RAM 41%   DISK 37%   GPU0 13%  GPU1 17%   CLAUDE 5h 75%   WEEK 16%   CODEX 7d 14%
 ```
+
+If you use Claude Code or Codex all day, the question you actually care about isn't
+CPU — it's *how much of my 5-hour block have I burned?* StatStrip keeps that
+answer on screen, next to your hardware stats, without spending any of the quota
+it's reporting.
+
+- **Real plan limits, not estimates.** Percent-of-your-actual-limit, read from the
+  same sources the tools use themselves.
+- **Costs you nothing to watch.** The Codex gauges run no model — zero tokens. The
+  Claude gauges reuse your existing login.
+- **Never lies to you.** A number it can't verify is marked with its age or hidden
+  outright. Stale figures that look live are treated as bugs, not features.
+- **Nothing leaves your PC.** No API keys, no accounts, no telemetry, no server.
+
+---
 
 ## Install (2 minutes, no technical knowledge needed)
 
-1. **Download StatStrip**: click the green **Code** button at the top of
-   this GitHub page → **Download ZIP**, then right-click the downloaded file
-   → **Extract All**.
-2. **Run it**: open the extracted folder and double-click **`install.bat`**.
+1. **Download**: click the green **Code** button at the top of this page →
+   **Download ZIP**, then right-click the file → **Extract All**.
+2. **Run**: open the extracted folder and double-click **`install.bat`**.
 
-That's it — the installer checks for Python and downloads it automatically
-if it's missing (this can take a few minutes the first time). The stats
-appear in your taskbar right away and come back automatically every time
-you log in. To remove StatStrip, double-click `uninstall.bat` in the same
-folder.
+That's it. The installer finds Python (and downloads it automatically if it's
+missing — this can take a few minutes the first time), installs StatStrip, and
+starts it. The stats appear in your taskbar right away and come back every time
+you log in. To remove it, double-click `uninstall.bat` in the same folder.
 
-> If the automatic Python download fails (very old Windows without winget),
-> install Python once from
-> [python.org/downloads](https://www.python.org/downloads/) — tick **"Add
-> python.exe to PATH"** — and run `install.bat` again.
+> If the automatic Python download fails (older Windows without `winget`), install
+> Python once from [python.org/downloads](https://www.python.org/downloads/) —
+> tick **"Add python.exe to PATH"** — and run `install.bat` again.
+
+## What the gauges mean
+
+| On the strip | Meaning |
+|---|---|
+| `CLAUDE 5h 75%` | 75% of your Claude 5-hour block used |
+| `WEEK 16%` | 16% of your Claude weekly limit used |
+| `CLAUDE 5h idle` | No active 5-hour block right now |
+| `CODEX 7d 14%` | 14% of your Codex weekly limit used |
+| `~` prefix | An *estimate* from your own history, not a real plan limit |
+| `(3h ago)` | A held reading — this old, not current. See [Honest numbers](#honest-numbers) |
+| `reset` | That window rolled over; the old number is known to be wrong |
+| `login required` | No usable login for that tool |
+| `usage unavailable` | No trustworthy reading right now (transient — it retries) |
+
+Codex names its own windows, and StatStrip shows whatever your plan reports rather
+than assuming. On a **Plus** plan that's a single weekly window (`CODEX 7d 14%`);
+other plans report more, including a 5-hour one.
 
 ## Privacy — no API keys, nothing leaves your PC
 
-- **No API keys, no accounts, no signup.** The Claude gauges reuse the
-  Claude Code login already on your PC (they simply ask Anthropic's servers
-  for your own usage numbers — the exact same request Claude Code makes when
-  you run `/usage`). If you don't use Claude Code, the gauges just show
-  "login required"; set `STATSTRIP_CLAUDE=off` to hide them.
-- **The Codex gauges don't spend any of your quota.** They ask your local
-  `codex` CLI for your usage (`account/rateLimits/read` — the same thing its
-  `/status` shows), which runs no model and costs no tokens. If you don't use
-  Codex, they show "login required"; set `STATSTRIP_CODEX=off` to hide them.
-- **Your stats stay on your machine.** CPU/RAM/disk/GPU numbers are read
-  locally and served only on `127.0.0.1` (reachable from your own PC alone).
-  Nothing is uploaded, logged, or shared with anyone — there is no server,
+- **No API keys, no accounts, no signup.** The Claude gauges reuse the Claude Code
+  login already on your PC — the same request Claude Code makes when you run
+  `/usage`. No Claude Code? They show "login required"; set `STATSTRIP_CLAUDE=off`
+  to hide them.
+- **The Codex gauges don't spend any of your quota.** They ask your local `codex`
+  CLI for your usage (`account/rateLimits/read`, the same call behind its
+  `/status`), which runs no model and costs **zero tokens**.
+- **Your stats stay on your machine.** Hardware numbers are read locally and served
+  only on `127.0.0.1`. Nothing is uploaded, logged, or shared — there is no server,
   no telemetry, no third party.
+
+## Honest numbers
+
+Most of the engineering here is about *not* showing a plausible wrong number. A
+usage gauge that quietly drifts is worse than no gauge, because you'll trust it.
+
+- **Readings carry the instant they were taken**, and the display ages them itself.
+  A collector that wedges shows a reading growing visibly older (`(3h ago)`), never
+  one frozen at "just now".
+- **A window that has since reset shows `reset`**, not a number known to be stale.
+- **"Login required" is reserved for an actual missing login.** A rate limit, a
+  network blip, or an endpoint hiccup says `usage unavailable` instead — sending you
+  off to re-authenticate for a problem that isn't about auth is a bug.
+- **StatStrip backs off instead of making things worse.** Claude's usage endpoint
+  rate-limits; polling straight through a 429 keeps the limit alive, so failures
+  back off exponentially and let it clear.
+- **Anything outside a source's expected contract is refused**, not guessed at — an
+  unparseable timestamp, a percentage outside 0–100, a renamed field.
+
+## Configuration
+
+All optional, set as environment variables before launching.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `STATSTRIP_CLAUDE` | `on` | `on`: real plan-limit % via Claude Code's usage API. `estimate`: [`ccusage`](https://github.com/ryoppippi/ccusage) heuristic over local logs, shown with a `~` prefix. `off`: hide the gauges. |
+| `STATSTRIP_CODEX` | `on` | `on`: live % via `codex app-server` (zero tokens), falling back to Codex's session logs. `log`: session logs only — passive, but only as fresh as your last local Codex turn. `off`: hide the gauges. |
+| `STATSTRIP_TASKBAR` | `1` | `1`: embed in the taskbar, left of the tray icons. `0`: float a bar just above it. |
+| `STATSTRIP_ALIGN` | `right` | Position in the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with Windows 11's centered app icons). |
+| `STATSTRIP_DISK_PATH` | `C:\` | Drive/path to report disk usage for. |
+| `STATSTRIP_PORT` | `5757` | Local port the collector serves `/stats` on. |
+| `STATSTRIP_CORS` | *(unset)* | `Access-Control-Allow-Origin` for `/stats`. Unset = no CORS header, so websites can't read your machine stats. |
+| `STATSTRIP_STATS_FILE` | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written. |
+| `STATSTRIP_LOCAL_REFRESH` | `2` | Seconds between CPU/RAM/disk/GPU polls. |
+| `STATSTRIP_CLAUDE_REFRESH` | `60` | Seconds between Claude usage polls. |
+| `STATSTRIP_CODEX_REFRESH` | `60` | Seconds between Codex usage polls. |
+| `STATSTRIP_CLAUDE_BACKOFF_MAX` | `1800` | Longest wait between Claude retries while its endpoint is refusing us. |
+| `STATSTRIP_CLAUDE_STALE_AFTER` | `600` | Age past which a held Claude reading is shown with `(… ago)`. |
+| `STATSTRIP_CODEX_STALE_AFTER` | `900` | Same, for a log-sourced Codex reading. |
 
 ## Architecture
 
-Split into two independent layers so the data is reusable outside this app —
-point any other script, dashboard, or website at the same local endpoint.
+Two independent layers, so the data is reusable outside this app — point any script,
+dashboard, or website at the same local endpoint.
 
 ```
-┌─────────────────┐      writes/serves       ┌────────────────┐
-│   collector      │ ───────────────────────▶ │ stats.json      │
-│  (psutil/pynvml,  │                          │ 127.0.0.1:5757  │
-│   Claude + Codex  │                          │      /stats     │
-│   usage)           │◀────────── read only ───┤                │
-└─────────────────┘                          └────────┬────────┘
-                                                        │
-                                              ┌─────────▼─────────┐
-                                              │     display        │
-                                              │ (tkinter bar, or    │
-                                              │  your own consumer) │
-                                              └────────────────────┘
+┌──────────────────┐      writes/serves       ┌─────────────────┐
+│    collector     │ ───────────────────────▶ │  stats.json      │
+│  (psutil/pynvml, │                          │  127.0.0.1:5757  │
+│   Claude + Codex │◀───────── read only ─────┤      /stats      │
+│      usage)      │                          └────────┬─────────┘
+└──────────────────┘                                   │
+                                             ┌─────────▼──────────┐
+                                             │      display        │
+                                             │ (taskbar bar, or    │
+                                             │  your own consumer) │
+                                             └─────────────────────┘
 ```
 
-- **`statstrip/collector.py`** — extraction only. Polls local hardware
-  stats, Claude usage and Codex usage, then writes the merged snapshot to a
-  JSON file and serves it over `http://127.0.0.1:5757/stats`.
-- **`statstrip/claude_oauth.py`** — primary Claude usage source: asks the
-  same endpoint Claude Code's `/usage` command uses (authenticated with the
-  token Claude Code already stores locally), so the gauges show your real
-  percent-of-plan-limit numbers.
-- **`statstrip/claude_local.py`** — opt-in estimate mode
-  (`STATSTRIP_CLAUDE=estimate`): shells out to
-  [`ccusage`](https://github.com/ryoppippi/ccusage) over your local Claude
-  Code logs (`~/.claude/projects`) and estimates percentages against your
-  own historical maximum (can exceed 100% — it's an estimate, not a plan
-  limit; shown with a `~` prefix).
-- **`statstrip/codex_appserver.py`** — primary Codex usage source: asks
-  `codex app-server` for `account/rateLimits/read`, the same call the Codex
-  TUI makes to refresh its usage display. It runs no model, so it costs **no
-  tokens** — you can poll it every minute for free — and it reports your
-  whole account, including Codex you ran on another machine.
-- **`statstrip/codex_local.py`** — fallback Codex source
-  (`STATSTRIP_CODEX=log` forces it): reads the rate-limit snapshot Codex CLI
-  writes into its own session logs (`~/.codex/sessions/*.jsonl`). Fully
-  passive, but only as fresh as the last Codex turn *on this machine* —
-  measured 6 points behind the live figure — so its readings carry an age
-  marker. Codex names its
-  own windows (`5h`, `7d`, …) and StatStrip shows whatever your plan
-  reports rather than assuming — on a Plus plan that's a single weekly
-  window (`CODEX 7d 4%`); other plans report more. Because Codex only records usage when it
-  runs, a reading older than 15 minutes is marked with its age (e.g.
-  `(3h ago)`), and a window that has since reset shows `reset` instead of a
-  number that's known to be out of date.
-- **`statstrip/display.py`** — consumption only. Polls that endpoint
-  and renders the bar embedded inside the taskbar (TrafficMonitor-style,
-  transparent background, left of the tray icons). Has zero knowledge of
-  psutil/pynvml/HTTP polling internals — it's just one consumer of the feed.
+- **`collector.py`** — extraction only. Polls hardware, Claude and Codex usage, then
+  writes a merged snapshot to a JSON file and serves it on
+  `http://127.0.0.1:5757/stats`.
+- **`display.py`** — consumption only. Renders the bar embedded inside the taskbar
+  (TrafficMonitor-style, transparent, left of the tray icons). It has zero knowledge
+  of collection internals — it's just one consumer of the feed.
+- **`claude_oauth.py`** — primary Claude source: the same endpoint Claude Code's
+  `/usage` uses, authenticated with the token it already stores locally.
+- **`claude_local.py`** — opt-in estimate mode (`STATSTRIP_CLAUDE=estimate`): shells
+  out to `ccusage` over your local logs and estimates against your own historical
+  maximum (can exceed 100% — it's an estimate, not a plan limit).
+- **`codex_appserver.py`** — primary Codex source: asks `codex app-server` for
+  `account/rateLimits/read`, the call the Codex TUI makes to refresh its own usage.
+  Runs no model, so it's free to poll — and it reports your whole account, including
+  Codex you ran on another machine.
+- **`codex_local.py`** — fallback Codex source (`STATSTRIP_CODEX=log` forces it):
+  reads the rate-limit snapshot Codex writes into its session logs. Fully passive,
+  but only sees turns run *on this machine* — measured 6 points behind the live
+  figure — so its readings carry an age marker.
 
-Anything else — a browser tab, another Python script, an Electron app — can
-hit the same `/stats` endpoint or read the JSON file directly. (Browser pages
-need `STATSTRIP_CORS` set; it's off by default so arbitrary websites can't
-read your machine stats.)
+Anything else — a browser tab, another script, an Electron app — can hit the same
+`/stats` endpoint or read the JSON directly. (Browser pages need `STATSTRIP_CORS`;
+it's off by default.)
 
-## Install details (for developers)
+## Development
 
-Requires Python 3.9+ on Windows (NVIDIA GPU optional; the app degrades
-gracefully without one).
+Requires Python 3.9+ on Windows. NVIDIA GPU optional — it degrades gracefully.
 
 ```
 git clone https://github.com/wassupjay/statstrip.git
 cd statstrip
-install.bat
-```
-
-`install.bat` does three things: `pip install`s the package (adds
-`statstrip-collector` / `statstrip-display` to PATH), drops a shortcut in the
-per-user Startup folder so it starts on every login (no admin required), then
-runs it immediately.
-
-### Manual run (no auto-start)
-
-```
 pip install .
 statstrip-collector
 statstrip-display
 ```
 
-Or without installing:
+Run the tests (no dependencies beyond the package itself):
 
 ```
-pip install -r requirements.txt
-python -m statstrip.collector
-python -m statstrip.display
+python -m unittest discover -s tests
 ```
 
-## Configuration
-
-All optional, set as environment variables before launching:
-
-| Variable              | Default              | Meaning                                   |
-|------------------------|-----------------------|--------------------------------------------|
-| `STATSTRIP_CLAUDE`           | `on`                  | `on`: real plan-limit % via Claude Code's usage API; shows `CLAUDE login required` when there's no usable local login, or `CLAUDE usage unavailable` for a transient failure (rate limit, network). `estimate`: ccusage heuristic over local logs (`npm install -g ccusage`), rendered with a `~` prefix. `off`: hide the gauges. |
-| `STATSTRIP_CODEX`            | `on`                  | `on`: live percentages via `codex app-server` (costs no tokens), falling back to Codex's session logs. `log`: only read the session logs — passive, but only as fresh as your last local Codex turn. Either way, shows `CODEX login required` when Codex isn't logged in, or `CODEX usage unavailable` when there's no usable reading yet. `off`: hide the gauges. |
-| `STATSTRIP_TASKBAR`          | `1`                   | `1`: embed the readout inside the taskbar, left of the tray icons. `0`: float a separate bar just above the taskbar. |
-| `STATSTRIP_ALIGN`            | `right`               | Position inside the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with centered app icons). |
-| `STATSTRIP_DISK_PATH`        | `C:\`                 | Drive/path to report disk usage for.       |
-| `STATSTRIP_PORT`             | `5757`                | Local port the collector serves `/stats` on. |
-| `STATSTRIP_CORS`             | *(unset)*             | `Access-Control-Allow-Origin` value for `/stats` (e.g. `*`). Unset = no CORS header, so browser pages can't read the feed. |
-| `STATSTRIP_STATS_FILE`       | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written.      |
-| `STATSTRIP_LOCAL_REFRESH`    | `2`                   | Seconds between CPU/RAM/disk/GPU polls.    |
-| `STATSTRIP_CLAUDE_REFRESH`   | `60`                  | Seconds between Claude usage polls (once a minute by default). |
-| `STATSTRIP_CODEX_REFRESH`    | `60`                  | Seconds between reads of Codex's session log (once a minute by default). |
+Contributions welcome — issues and PRs both. The one house rule is the one above:
+**a gauge must never show a number it can't stand behind.** If a source fails, is
+stale, or returns something outside its contract, say so or say nothing.
 
 ## License
 
