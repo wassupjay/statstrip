@@ -102,16 +102,20 @@ All optional, set as environment variables before launching.
 | `STATSTRIP_CODEX` | `on` | `on`: live % via `codex app-server` (zero tokens), falling back to Codex's session logs. `log`: session logs only — passive, but only as fresh as your last local Codex turn. `off`: hide the gauges. |
 | `STATSTRIP_TASKBAR` | `1` | `1`: embed in the taskbar, left of the tray icons. `0`: float a bar just above it. |
 | `STATSTRIP_ALIGN` | `right` | Position in the taskbar: `right` hugs the tray icons; `left` hugs the left edge (use when the readout collides with Windows 11's centered app icons). |
-| `STATSTRIP_DISK_PATH` | `C:\` | Drive/path to report disk usage for. |
+| `STATSTRIP_DISK_PATH` | `C:\\` | Drive/path to report disk usage for. |
 | `STATSTRIP_PORT` | `5757` | Local port the collector serves `/stats` on. |
 | `STATSTRIP_CORS` | *(unset)* | `Access-Control-Allow-Origin` for `/stats`. Unset = no CORS header, so websites can't read your machine stats. |
-| `STATSTRIP_STATS_FILE` | `%TEMP%\statstrip-stats.json` | Where the snapshot JSON is written. |
+| `STATSTRIP_STATS_FILE` | `%TEMP%\\statstrip-stats.json` | Where the snapshot JSON is written. |
 | `STATSTRIP_LOCAL_REFRESH` | `2` | Seconds between CPU/RAM/disk/GPU polls. |
 | `STATSTRIP_CLAUDE_REFRESH` | `60` | Seconds between Claude usage polls. |
 | `STATSTRIP_CODEX_REFRESH` | `60` | Seconds between Codex usage polls. |
 | `STATSTRIP_CLAUDE_BACKOFF_MAX` | `1800` | Longest wait between Claude retries while its endpoint is refusing us. |
 | `STATSTRIP_CLAUDE_STALE_AFTER` | `600` | Age past which a held Claude reading is shown with `(… ago)`. |
 | `STATSTRIP_CODEX_STALE_AFTER` | `900` | Same, for a log-sourced Codex reading. |
+| `STATSTRIP_THEME` | *(unset)* | Named theme preset: `cyan` (default), `mono`, `amber`, `green`, `high-contrast`. Sets BG, FG, and font together. |
+| `STATSTRIP_BG` | *(from theme)* | Background hex color (also the transparent-color key for taskbar embedding). Overrides theme. |
+| `STATSTRIP_FG` | *(from theme)* | Foreground/text hex color. Overrides theme. |
+| `STATSTRIP_FONT` | *(from theme)* | Font family name (e.g., `Consolas`, `Cascadia Code`, `JetBrains Mono`). Overrides theme. |
 
 ## Architecture
 
