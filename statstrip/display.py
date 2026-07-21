@@ -19,8 +19,9 @@ from . import config
 STATS_URL = f"http://127.0.0.1:{config.SERVE_PORT}/stats"
 POLL_INTERVAL = 1  # seconds
 
-BG = "#0a0f1a"
-FG = "#22d3ee"
+BG = config.BG
+FG = config.FG
+FONT_FAMILY = config.FONT_FAMILY
 
 _lock = threading.Lock()
 _snapshot = {}
@@ -259,8 +260,8 @@ def run_bar():
         font_size = max(8, round(10 * user32.GetDpiForSystem() / 96))
     except Exception:
         pass
-    label = tk.Label(root, text="loading…", fg=FG, bg=BG,
-                      font=("Consolas", font_size), anchor="w")
+    label = tk.Label(root, text="loading...", fg=FG, bg=BG,
+                      font=(FONT_FAMILY, font_size), anchor="w")
     label.pack(fill="both", expand=True, padx=8)
 
     host = None

@@ -1,6 +1,39 @@
 import os
 import tempfile
 
+# ──────────────────────────────────────────────────────────────────────
+# Theme / display presets
+# ──────────────────────────────────────────────────────────────────────
+# Each preset is (BG, FG, FONT_FAMILY). BG doubles as the transparent-color
+# key for taskbar embedding (root.attributes("-transparentcolor", BG)), so a
+# theme whose BG equals a color used in the text would make that text
+# invisible. All presets here avoid that.
+_THEMES = {
+    # name: (bg, fg, font)
+    "cyan":             ("#0a0f1a", "#22d3ee", "Consolas"),   # current default
+    "mono":             ("#1a1a1a", "#e0e0e0", "Consolas"),
+    "amber":            ("#1a0f00", "#ffb800", "Consolas"),
+    "green":            ("#001a00", "#00ff88", "Consolas"),
+    "high-contrast":    ("#000000", "#ffffff", "Consolas"),
+}
+
+_THEME_NAMES = tuple(_THEMES.keys())
+
+# Resolve theme from env var (STATSTRIP_THEME), then allow individual
+# STATSTRIP_BG / STATSTRIP_FG / STATSTRIP_FONT env vars to override any
+# of the theme's values, falling back to "cyan" default.
+_theme_name = os.environ.get("STATSTRIP_THEME", "").lower()
+if _theme_name in _THEMES:
+    _bg, _fg, _font = _THEMES[_theme_name]
+else:
+    _bg, _fg, _font = _THEMES["cyan"]
+
+# Individual env vars can override theme values
+BG = os.environ.get("STATSTRIP_BG", _bg)
+FG = os.environ.get("STATSTRIP_FG", _fg)
+FONT_FAMILY = os.environ.get("STATSTRIP_FONT", _font)
+
+
 # Claude gauges. "on" (default): real plan-limit percentages via Claude
 # Code's own usage API — shows "login required" when no usable local login
 # exists. "estimate": ccusage heuristic over local logs (relative to your own
@@ -44,7 +77,7 @@ TASKBAR_ALIGN = os.environ.get("STATSTRIP_ALIGN", "right").lower()
 LOCAL_REFRESH = float(os.environ.get("STATSTRIP_LOCAL_REFRESH", "2"))
 CLAUDE_REFRESH = float(os.environ.get("STATSTRIP_CLAUDE_REFRESH", "60"))
 CODEX_REFRESH = float(os.environ.get("STATSTRIP_CODEX_REFRESH", "60"))
-DISK_PATH = os.environ.get("STATSTRIP_DISK_PATH", "C:\\")
+DISK_PATH = os.environ.get("STATSTRIP_DISK_PATH", "C:\\\\")
 SERVE_PORT = int(os.environ.get("STATSTRIP_PORT", "5757"))
 
 # Access-Control-Allow-Origin value for /stats. Empty (default) sends no CORS
@@ -55,3 +88,7 @@ CORS_ORIGIN = os.environ.get("STATSTRIP_CORS", "")
 STATS_FILE = os.environ.get(
     "STATSTRIP_STATS_FILE", os.path.join(tempfile.gettempdir(), "statstrip-stats.json")
 )
+
+# Exported for --help / documentation generation
+THEME_PRESETS = _THEMES
+THEME_NAMES = _THEME_NAMES
